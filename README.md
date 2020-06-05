@@ -48,8 +48,8 @@ Export help text:
 $ python export_db.py --help
 usage: export_db.py [-h] [--users] [--workspace] [--download] [--libs]
                     [--clusters] [--jobs] [--metastore] [--database DATABASE]
-                    [--iam IAM] [--skip-failed] [--azure] [--profile PROFILE]
-                    [--export-home EXPORT_HOME] [--silent]
+                    [--iam IAM] [--skip-failed] [--mounts] [--azure] 
+					[--profile PROFILE] [--export-home EXPORT_HOME] [--silent]
                     [--no-ssl-verification] [--debug]
 
 Export user workspace artifacts from Databricks
@@ -68,6 +68,7 @@ optional arguments:
                         database name supported
   --iam IAM             IAM Instance Profile to export metastore entires
   --skip-failed         Skip retries for any failed exports.
+  --mounts              Log all mount points.
   --azure               Run on Azure. (Default is AWS)
   --profile PROFILE     Profile to parse the credentials
   --export-home EXPORT_HOME

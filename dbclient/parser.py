@@ -94,6 +94,9 @@ def get_export_parser():
     parser.add_argument('--skip-failed', action='store_true', default=False,
                         help='Skip retries for any failed exports.')
 
+    # get mount points
+    parser.add_argument('--mounts', action='store_true', default=False,
+                        help='Log all mount points.')
     # get azure logs
     parser.add_argument('--azure', action='store_true', default= False,
                         help='Run on Azure. (Default is AWS)')

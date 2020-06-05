@@ -127,6 +127,14 @@ def main():
         end = timer()
         print("Complete Metastore Export Time: " + str(timedelta(seconds=end - start)))
 
+    if args.mounts:
+        print("Export the mount configs at {0}".format(now))
+        start = timer()
+        dbfs_c = DbfsClient(client_config)
+        # log job configs
+        dbfs_c.export_dbfs_mounts()
+        end = timer()
+        print("Complete Mounts Export Time: " + str(timedelta(seconds=end - start)))
 
 if __name__ == '__main__':
     main()

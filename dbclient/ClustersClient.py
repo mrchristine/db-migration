@@ -1,5 +1,4 @@
-import os
-import re
+import os, re, time
 
 from dbclient import *
 
@@ -249,3 +248,115 @@ class ClustersClient(dbclient):
         else:
             global_scripts = [{'path': x['path']} for x in ls if x['is_dir'] == False]
             return global_scripts
+
+    def wait_for_cluster(self, cid):
+        c_state = self.get('/clusters/get', {'cluster_id': cid})
+        while c_state['state'] != 'RUNNING':
+            c_state = self.get('/clusters/get', {'cluster_id': cid})
+            print('Cluster state: {0}'.format(c_state['state']))
+            time.sleep(2)
+        return cid
+
+    def get_cluster_id_by_name(self, cname):
+        cl = self.get('/clusters/list')
+        running = list(filter(lambda x: x['state'] == "RUNNING", cl['clusters']))
+        for x in running:
+            if cname == x['cluster_name']:
+                return x['cluster_id']
+        return None
+
+    def launch_cluster(self, iam_role=None):
+        """ Launches a cluster to get DDL statements.
+        Returns a cluster_id """
+        # removed for now as Spark 3.0 will have backwards incompatible changes
+        # version = self.get_latest_spark_version()
+        import os
+        real_path = os.path.dirname(os.path.realpath(__file__))
+        if self.is_aws():
+            with open(real_path + '/../data/aws_cluster.json', 'r') as fp:
+                cluster_json = json.loads(fp.read())
+            if iam_role:
+                aws_attr = cluster_json['aws_attributes']
+                print("Creating cluster with: " + iam_role)
+                aws_attr['instance_profile_arn'] = iam_role
+                cluster_json['aws_attributes'] = aws_attr
+        else:
+            with open(real_path + '/../data/azure_cluster.json', 'r') as fp:
+                cluster_json = json.loads(fp.read())
+        # set the latest spark release regardless of defined cluster json
+        # cluster_json['spark_version'] = version['key']
+        cluster_name = cluster_json['cluster_name']
+        existing_cid = self.get_cluster_id_by_name(cluster_name)
+        if existing_cid:
+            return existing_cid
+        else:
+            c_info = self.post('/clusters/create', cluster_json)
+            if c_info['http_status_code'] != 200:
+                raise Exception("Could not launch cluster. Verify that the --azure flag or cluster config is correct.")
+            self.wait_for_cluster(c_info['cluster_id'])
+            return c_info['cluster_id']
+
+    def edit_cluster(self, cid, iam_role):
+        """Edits the existing metastore cluster
+        Returns cluster_id"""
+        version = self.get_latest_spark_version()
+        import os
+        real_path = os.path.dirname(os.path.realpath(__file__))
+        if self.is_aws():
+            with open(real_path + '/../data/aws_cluster.json', 'r') as fp:
+                cluster_json = json.loads(fp.read())
+                # pull AWS attributes and update the IAM policy
+                aws_attr = cluster_json['aws_attributes']
+                print("Updating cluster with: " + iam_role)
+                aws_attr['instance_profile_arn'] = iam_role
+                cluster_json['aws_attributes'] = aws_attr
+                resp = self.post('/clusters/edit', cluster_json)
+                self.wait_for_cluster(cid)
+                return cid
+        else:
+            return False
+
+    def get_execution_context(self, cid):
+        print("Creating remote Spark Session")
+        time.sleep(5)
+        ec_payload = {"language": "python",
+                      "clusterId": cid}
+        ec = self.post('/contexts/create', json_params=ec_payload, version="1.2")
+        # Grab the execution context ID
+        ec_id = ec.get('id', None)
+        if not ec_id:
+            print('Unable to establish remote session')
+            print(ec)
+            raise Exception("Remote session error")
+        return ec_id
+
+    def submit_command(self, cid, ec_id, cmd):
+        # This launches spark commands and print the results. We can pull out the text results from the API
+        command_payload = {'language': 'python',
+                           'contextId': ec_id,
+                           'clusterId': cid,
+                           'command': cmd}
+        command = self.post('/commands/execute',
+                            json_params=command_payload,
+                            version="1.2")
+
+        com_id = command.get('id', None)
+        if not com_id:
+            print("ERROR: ")
+            print(command)
+        # print('command_id : ' + com_id)
+        result_payload = {'clusterId': cid, 'contextId': ec_id, 'commandId': com_id}
+
+        resp = self.get('/commands/status', json_params=result_payload, version="1.2")
+        is_running = resp['status']
+
+        # loop through the status api to check for the 'running' state call and sleep 1 second
+        while (is_running == "Running") or (is_running == 'Queued'):
+            resp = self.get('/commands/status', json_params=result_payload, version="1.2")
+            is_running = resp['status']
+            time.sleep(1)
+        end_results = resp['results']
+        if end_results.get('resultType', None) == 'error':
+            print("ERROR: ")
+            print(end_results.get('summary', None))
+        return end_results

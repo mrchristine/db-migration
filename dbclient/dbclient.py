@@ -132,3 +132,11 @@ class dbclient:
         for elem in items:
             to_return.append(F(elem))
         return to_return
+
+    def get_latest_spark_version(self):
+        versions = self.get('/clusters/spark-versions')['versions']
+        v_sorted = sorted(versions, key=lambda i: i['key'], reverse=True)
+        for x in v_sorted:
+            img_type = x['key'].split('-')[1][0:5]
+            if img_type == 'scala':
+                return x
