@@ -1,5 +1,5 @@
 from dbclient import *
-import sys
+import sys, requests
 
 # python 3.6
 
@@ -11,15 +11,15 @@ def main():
     p = args.profile
 
     # parse the path location of the Databricks CLI configuration
-    login_creds = get_login_credentials(profile=p)
+    login_args = get_login_credentials(profile=p)
 
     # parse the credentials
-    url = login_creds['host']
-    token = login_creds['token']
-    export_dir = 'logs/'
+    url = login_args['host']
+    token = login_args['token']
+    client_config = build_client_config(url, token, args)
 
     print("Test connection at {0} with profile {1}\n".format(url, args.profile))
-    db_client = dbclient(token, url, export_dir)
+    db_client = dbclient(client_config)
     try:
         is_successful = db_client.test_connection()
     except requests.exceptions.RequestException as e:

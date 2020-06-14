@@ -47,6 +47,15 @@ def main():
         end = timer()
         print("Complete Workspace Export Time: " + str(timedelta(seconds=end - start)))
 
+    if args.workspace_acls:
+        print("Export the ACLs for workspace objects at {0}".format(now))
+        ws_c = WorkspaceClient(client_config)
+        start = timer()
+        # log notebooks and directory acls
+        ws_c.log_all_workspace_acls()
+        end = timer()
+        print("Complete Workspace Permission Export Time: " + str(timedelta(seconds=end - start)))
+
     if args.download:
         print("Starting complete workspace download at {0}".format(now))
         ws_c = WorkspaceClient(client_config)

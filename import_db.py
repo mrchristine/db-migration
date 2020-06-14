@@ -43,7 +43,7 @@ def main():
     if args.libs:
         lib_c = LibraryClient(client_config)
         start = timer()
-        ########### TO DO #######################
+        print("Not supported today")
         end = timer()
         # print("Complete Library Import Time: " + str(timedelta(seconds=end - start)))
 

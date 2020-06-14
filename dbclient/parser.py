@@ -107,6 +107,9 @@ def get_export_parser():
     parser.add_argument('--export-home', action='store',
                         help='User workspace name to export, typically the users email address')
 
+    parser.add_argument('--workspace-acls', action='store_true',
+                        help='Permissions for workspace objects to export')
+
     parser.add_argument('--silent', action='store_true', default=False,
                         help='Silent all logging of export operations.')
     # Don't verify ssl

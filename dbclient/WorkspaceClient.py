@@ -91,20 +91,33 @@ class WorkspaceClient(dbclient):
         if item_type not in supported_types:
             raise ValueError('Unsupported type provided: {0}.\n. Supported types: {1}'.format(item_type,
                                                                                               str(supported_types)))
-        filtered_list = list(self.my_map(lambda y: y.get('path', None),
-                                         filter(lambda x: x.get('object_type', None) == item_type, item_list)))
+        filtered_list=list(self.my_map(lambda y: {'path': y.get('path', None),
+                                                  'object_id': y.get('object_id', None)},
+                                       filter(lambda x: x.get('object_type', None) == item_type, item_list)))
         return filtered_list
 
-    def init_workspace_logfiles(self, workspace_log_file='user_workspace.log', libs_log_file='libraries.log'):
+    def init_workspace_logfiles(self, workspace_log_file='user_workspace.log',
+                                libs_log_file='libraries.log', workspace_dir_log_file='user_dirs.log'):
         workspace_log = self._export_dir + workspace_log_file
         libs_log = self._export_dir + libs_log_file
+        workspace_dir_log = self._export_dir + workspace_dir_log_file
         if os.path.exists(workspace_log):
             os.remove(workspace_log)
+        if os.path.exists(workspace_dir_log):
+            os.remove(workspace_dir_log)
         if os.path.exists(libs_log):
             os.remove(libs_log)
 
+    @staticmethod
+    def is_user_trash(ws_path):
+        path_list = ws_path.split('/')
+        if len(path_list) == 4:
+            if path_list[1] == 'Users' and path_list[3] == 'Trash':
+                return True
+        return False
+
     def log_all_workspace_items(self, ws_path='/', workspace_log_file='user_workspace.log',
-                                libs_log_file='libraries.log'):
+                                libs_log_file='libraries.log', dir_log_file='user_dirs.log'):
         """
         Loop and log all workspace items to download them at a later time
         :param ws_path: root path to log all the items of the notebook workspace
@@ -112,6 +125,11 @@ class WorkspaceClient(dbclient):
         :param libs_log_file: library logfile to store workspace libraries
         :return:
         """
+
+        # define log file names for notebooks, folders, and libraries
+        workspace_log = self._export_dir + workspace_log_file
+        workspace_dir_log = self._export_dir + dir_log_file
+        libs_log = self._export_dir + libs_log_file
         if ws_path == '/':
             # default is the root path
             get_args = {'path': '/'}
@@ -129,21 +147,44 @@ class WorkspaceClient(dbclient):
             # should be no notebooks, but lets filter and can check later
             notebooks = self.filter_workspace_items(items, 'NOTEBOOK')
             libraries = self.filter_workspace_items(items, 'LIBRARY')
-            # log file for
-            workspace_log = self._export_dir + workspace_log_file
-            libs_log = self._export_dir + libs_log_file
             with open(workspace_log, "a") as ws_fp, open(libs_log, "a") as libs_fp:
                 for x in notebooks:
                     if self.is_verbose():
                         print("Saving path: {0}".format(x))
-                    ws_fp.write(x + '\n')
+                    ws_fp.write(json.dumps(x) + '\n')
                 for y in libraries:
-                    libs_fp.write(y + '\n')
+                    libs_fp.write(json.dumps(y) + '\n')
+            # log all directories to export permissions
+            with open(workspace_dir_log, "a") as dir_fp:
+                if folders:
+                    for f in folders:
+                        dir_path = f.get('path', None)
+                        if not WorkspaceClient.is_user_trash(dir_path):
+                            dir_fp.write(json.dumps(f) + '\n')
+                            self.log_all_workspace_items(ws_path=dir_path, workspace_log_file=workspace_log_file,
+                                                         libs_log_file=libs_log_file)
 
-            if folders:
-                for f in folders:
-                    self.log_all_workspace_items(ws_path=f, workspace_log_file=workspace_log_file,
-                                                 libs_log_file=libs_log_file)
+    def log_acl_to_file(self, artifact_type, read_log_filename, write_log_filename):
+        read_log_path = self._export_dir + read_log_filename
+        write_log_path = self._export_dir + write_log_filename
+        with open(read_log_path, 'r') as read_fp, open(write_log_path, 'w') as write_fp:
+            for notebook in read_fp:
+                obj_id = json.loads(notebook).get('object_id', None)
+                api_endpoint = '/permissions/{0}/{1}'.format(artifact_type, obj_id)
+                acl_resp = self.get(api_endpoint)
+                acl_resp.pop('http_status_code')
+                write_fp.write(json.dumps(acl_resp) + '\n')
+
+    def log_all_workspace_acls(self, workspace_log_file='user_workspace.log',
+                               dir_log_file='user_dirs.log'):
+        # define log file names for notebooks, folders, and libraries
+        print("Exporting the notebook permissions")
+        self.log_acl_to_file('notebooks', workspace_log_file, 'acl_notebooks.log')
+        print("Exporting the directories permissions")
+        self.log_acl_to_file('directories', dir_log_file, 'acl_directories.log')
+
+    def import_workspace_acls(self):
+        print("hello")
 
     @staticmethod
     def get_num_of_saved_users(export_dir):
@@ -250,3 +291,13 @@ class WorkspaceClient(dbclient):
                 if self.is_verbose():
                     print("Path: {0}".format(nb_input_args['path']))
                 resp_upload = self.post(WS_IMPORT, nb_input_args)
+
+    def log_workspace_permissions(self, ws_log='user_workspace.log', dir_log='user_dirs.log'):
+        workspace_logfile = self._export_dir + ws_log
+        dir_logfile = self._export_dir + dir_log
+        with open(workspace_logfile, 'r') as fp:
+            for notebook in fp:
+                print(notebook)
+        with open(dir_logfile, 'r') as fp_dir:
+            for d in fp_dir:
+                print(d)
