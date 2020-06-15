@@ -1,4 +1,6 @@
 import base64
+from timeit import default_timer as timer
+from datetime import timedelta
 import os
 
 from dbclient import *
@@ -179,9 +181,15 @@ class WorkspaceClient(dbclient):
                                dir_log_file='user_dirs.log'):
         # define log file names for notebooks, folders, and libraries
         print("Exporting the notebook permissions")
+        start = timer()
         self.log_acl_to_file('notebooks', workspace_log_file, 'acl_notebooks.log')
+        end = timer()
+        print("Complete Notebook ACLs Export Time: " + str(timedelta(seconds=end - start)))
         print("Exporting the directories permissions")
+        start = timer()
         self.log_acl_to_file('directories', dir_log_file, 'acl_directories.log')
+        end = timer()
+        print("Complete Directories ACLs Export Time: " + str(timedelta(seconds=end - start)))
 
     def import_workspace_acls(self):
         print("hello")
