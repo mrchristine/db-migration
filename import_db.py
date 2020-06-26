@@ -40,6 +40,15 @@ def main():
         end = timer()
         print("Complete Workspace Import Time: " + str(timedelta(seconds=end - start)))
 
+    if args.workspace_acls:
+        print("Import workspace ACLs at {0}".format(now))
+        print("Import on {0}".format(url))
+        ws_c = WorkspaceClient(client_config)
+        start = timer()
+        # log notebooks and libraries
+        ws_c.import_workspace_acls()
+        end = timer()
+        print("Complete Workspace acl Import Time: " + str(timedelta(seconds=end - start)))
     if args.libs:
         lib_c = LibraryClient(client_config)
         start = timer()
@@ -95,7 +104,7 @@ def main():
         start = timer()
         hive_c = HiveClient(client_config)
         # log job configs
-        hive_c.import_hive_metastore()
+        hive_c.import_hive_metastore(cluster_name=args.cluster_name)
         end = timer()
         print("Complete Metastore Import Time: " + str(timedelta(seconds=end - start)))
 

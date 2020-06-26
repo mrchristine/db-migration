@@ -93,9 +93,9 @@ class WorkspaceClient(dbclient):
         if item_type not in supported_types:
             raise ValueError('Unsupported type provided: {0}.\n. Supported types: {1}'.format(item_type,
                                                                                               str(supported_types)))
-        filtered_list=list(self.my_map(lambda y: {'path': y.get('path', None),
-                                                  'object_id': y.get('object_id', None)},
-                                       filter(lambda x: x.get('object_type', None) == item_type, item_list)))
+        filtered_list = list(self.my_map(lambda y: {'path': y.get('path', None),
+                                                    'object_id': y.get('object_id', None)},
+                                         filter(lambda x: x.get('object_type', None) == item_type, item_list)))
         return filtered_list
 
     def init_workspace_logfiles(self, workspace_log_file='user_workspace.log',
@@ -191,8 +191,16 @@ class WorkspaceClient(dbclient):
         end = timer()
         print("Complete Directories ACLs Export Time: " + str(timedelta(seconds=end - start)))
 
-    def import_workspace_acls(self):
-        print("hello")
+    def import_workspace_acls(self, workspace_log_file='acl_notebooks.log',
+                              dir_log_file='acl_directories.log'):
+        dir_acl_logs = self._export_dir + dir_log_file
+        notebook_acl_logs = self._export_dir + workspace_log_file
+        with open(notebook_acl_logs) as nb_acls_fp:
+            for nb_acl in nb_acls_fp:
+                print(nb_acl)
+        with open(dir_acl_logs) as dir_acls_fp:
+            for dir_acl in dir_acls_fp:
+                print(dir_acl)
 
     @staticmethod
     def get_num_of_saved_users(export_dir):

@@ -102,6 +102,9 @@ optional arguments:
   --clusters            Import all the cluster configs for the environment
   --jobs                Import all job configurations to the environment.
   --metastore           Import the metastore to the workspace.
+  --cluster-name CLUSTER_NAME
+                        Cluster name to import the metastore to a specific
+                        cluster. Cluster will be started.
   --skip-failed         Skip retries for any failed exports.
   --azure               Run on Azure. (Default is AWS)
   --profile PROFILE     Profile to parse the credentials

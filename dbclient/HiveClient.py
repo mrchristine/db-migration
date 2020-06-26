@@ -184,9 +184,12 @@ class HiveClient(ClustersClient):
             ddl_results = self.submit_command(cid, ec_id, spark_ddl_statement)
             return ddl_results
 
-    def import_hive_metastore(self, ms_dir='metastore'):
+    def import_hive_metastore(self, cluster_name=None, ms_dir='metastore'):
         ms_local_dir = self._export_dir + ms_dir
-        cid = self.launch_cluster()
+        if cluster_name:
+            cid = self.start_cluster_by_name(cluster_name)
+        else:
+            cid = self.launch_cluster()
         time.sleep(2)
         ec_id = self.get_execution_context(cid)
         # get local databases

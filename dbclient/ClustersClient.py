@@ -113,7 +113,7 @@ class ClustersClient(dbclient):
             tags['OriginalCreator'] = cluster_creator
             cluster_json['custom_tags'] = tags
         else:
-            cluster_json['custom_tags'] = {'OriginalCreator' : cluster_creator}
+            cluster_json['custom_tags'] = {'OriginalCreator': cluster_creator}
         # remove all aws_attr except for IAM role if it exists
         if 'aws_attributes' in cluster_json:
             aws_conf = cluster_json.pop('aws_attributes')
@@ -156,7 +156,7 @@ class ClustersClient(dbclient):
                         tags['OriginalCreator'] = cluster_creator
                         cluster_conf['custom_tags'] = tags
                     else:
-                        cluster_conf['custom_tags'] = {'OriginalCreator' : cluster_creator}
+                        cluster_conf['custom_tags'] = {'OriginalCreator': cluster_creator}
                     new_cluster_conf = cluster_conf
                 print("Creating cluster: {0}".format(new_cluster_conf['cluster_name']))
                 cluster_resp = self.post('/clusters/create', new_cluster_conf)
@@ -257,13 +257,33 @@ class ClustersClient(dbclient):
             time.sleep(2)
         return cid
 
-    def get_cluster_id_by_name(self, cname):
+    def get_cluster_id_by_name(self, cname, running_only=False):
         cl = self.get('/clusters/list')
-        running = list(filter(lambda x: x['state'] == "RUNNING", cl['clusters']))
-        for x in running:
-            if cname == x['cluster_name']:
-                return x['cluster_id']
+        if running_only:
+            running = list(filter(lambda x: x['state'] == "RUNNING", cl['clusters']))
+            for x in running:
+                if cname == x['cluster_name']:
+                    return x['cluster_id']
+        else:
+            for x in cl['clusters']:
+                if cname == x['cluster_name']:
+                    return x['cluster_id']
         return None
+
+    def start_cluster_by_name(self, cluster_name):
+        cid = self.get_cluster_id_by_name(cluster_name)
+        if cid is None:
+            raise Exception('Error: Cluster name does not exist')
+        print("Starting {0} with id {1}".format(cluster_name, cid))
+        resp = self.post('/clusters/start', {'cluster_id': cid})
+        if 'error_code' in resp:
+            if resp.get('error_code', None) == 'INVALID_STATE':
+                print('Error: {0}'.format(resp.get('message', None)))
+            else:
+                raise Exception('Error: cluster does not exist, or is in a state that is unexpected. '
+                                'Cluster should either be terminated state, or already running.')
+        self.wait_for_cluster(cid)
+        return cid
 
     def launch_cluster(self, iam_role=None):
         """ Launches a cluster to get DDL statements.
@@ -288,8 +308,11 @@ class ClustersClient(dbclient):
         cluster_name = cluster_json['cluster_name']
         existing_cid = self.get_cluster_id_by_name(cluster_name)
         if existing_cid:
-            return existing_cid
+            # if the cluster id exists, then a cluster exists in a terminated state. let's start it
+            cid = self.start_cluster_by_name(cluster_name)
+            return cid
         else:
+            print("Starting cluster with name: {0} ".format(cluster_name))
             c_info = self.post('/clusters/create', cluster_json)
             if c_info['http_status_code'] != 200:
                 raise Exception("Could not launch cluster. Verify that the --azure flag or cluster config is correct.")

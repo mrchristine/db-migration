@@ -134,6 +134,9 @@ def get_import_parser():
     parser.add_argument('--workspace', action='store_true',
                         help='Import all notebooks from export dir into the workspace.')
 
+    parser.add_argument('--workspace-acls', action='store_true',
+                        help='Permissions for workspace objects to export')
+
     # import all notebooks
     parser.add_argument('--archive-missing', action='store_true',
                         help='Import all missing users into the top level /Archive/ directory.')
@@ -154,6 +157,9 @@ def get_import_parser():
     parser.add_argument('--metastore', action='store_true',
                         help='Import the metastore to the workspace.')
 
+    # cluster name used to import the metastore
+    parser.add_argument('--cluster-name', action='store',
+                        help='Cluster name to import the metastore to a specific cluster. Cluster will be started.')
     # skip failures
     parser.add_argument('--skip-failed', action='store_true', default=False,
                         help='Skip retries for any failed exports.')
