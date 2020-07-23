@@ -82,9 +82,9 @@ def get_export_parser():
     parser.add_argument('--metastore', action='store_true',
                         help='log all the metastore table definitions')
 
-    # cluster name used to import the metastore
+    # cluster name used to export the metastore
     parser.add_argument('--cluster-name', action='store',
-                        help='Cluster name to import the metastore to a specific cluster. Cluster will be started.')
+                        help='Cluster name to export the metastore to a specific cluster. Cluster will be started.')
 
     # get database to export for metastore
     parser.add_argument('--database', action='store',
