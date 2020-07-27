@@ -142,9 +142,12 @@ class HiveClient(ClustersClient):
         else:
             print("No registered instance profiles to retry export")
 
-    def export_hive_metastore(self, ms_dir='metastore/'):
+    def export_hive_metastore(self, cluster_name = None, ms_dir='metastore/'):
         start = timer()
-        cid = self.launch_cluster()
+        if cluster_name:
+            cid = self.start_cluster_by_name(cluster_name)
+        else:
+            cid = self.launch_cluster()
         end = timer()
         print("Cluster creation time: " + str(timedelta(seconds=end - start)))
         time.sleep(5)

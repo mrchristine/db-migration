@@ -129,10 +129,10 @@ def main():
         if args.database is not None:
             # export only a single database with a given iam role
             database_name = args.database
-            hive_c.export_database(database_name, args.iam)
+            hive_c.export_database(database_name, args.cluster_name, args.iam)
         else:
             # export all of the metastore
-            hive_c.export_hive_metastore()
+            hive_c.export_hive_metastore(cluster_name=args.cluster_name)
         end = timer()
         print("Complete Metastore Export Time: " + str(timedelta(seconds=end - start)))
 
