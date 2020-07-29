@@ -11,7 +11,7 @@ from dbclient import *
 class HiveClient(ClustersClient):
 
 
-    def log_all_databases(self, cid, ec_id, ms_dir):
+    def log_all_databases(self, cid, ec_id, metastore_dir):
         # submit first command to find number of databases
         # DBR 7.0 changes databaseName to namespace for the return value of show databases
         all_dbs_cmd = 'all_dbs = [x.databaseName for x in spark.sql("show databases").collect()]; print(len(all_dbs))'
@@ -31,10 +31,61 @@ class HiveClient(ClustersClient):
             for db in db_names:
                 all_dbs.append(db)
                 print("Database: {0}".format(db))
-                os.makedirs(self._export_dir + ms_dir + db, exist_ok=True)
+                os.makedirs(self._export_dir + metastore_dir + db, exist_ok=True)
         return all_dbs
 
-    def log_all_tables(self, db_name, cid, ec_id, ms_dir, err_log_path):
+    def log_table_ddl(self, cid, ec_id, db_name, table_name, metastore_dir, err_log_path):
+        """
+        Log the table DDL to handle large DDL text
+        :param cid: cluster id
+        :param ec_id: execution context id (rest api 1.2)
+        :param db_name: database name
+        :param table_name: table name
+        :param metastore_dir: metastore export directory name
+        :return: 0 for success, -1 for error
+        """
+        set_ddl_str_cmd = f'ddl_str = spark.sql("show create table {db_name}.{table_name}").collect()[0][0]'
+        ddl_str_resp = self.submit_command(cid, ec_id, set_ddl_str_cmd)
+        with open(err_log_path, 'a') as err_log:
+            if ddl_str_resp['resultType'] != 'text':
+                ddl_str_resp['table'] = '{0}.{1}'.format(db_name, table_name)
+                err_log.write(json.dumps(ddl_str_resp) + '\n')
+                return -1
+            get_ddl_str_len = 'ddl_len = len(ddl_str); print(ddl_len)'
+            len_resp = self.submit_command(cid, ec_id, get_ddl_str_len)
+            ddl_len = int(len_resp['data'])
+            if ddl_len <= 0:
+                len_resp['table'] = '{0}.{1}'.format(db_name, table_name)
+                err_log.write(json.dumps(len_resp) + '\n')
+                return -1
+            prev = 0
+            batch_size = 1024
+            with open(self._export_dir + metastore_dir + db_name + '/' + table_name, "w") as fp:
+                # this loop doesn't execute if the length of the DDL is smaller than the batch size
+                for end in range(batch_size, int(ddl_len), batch_size):
+                    if self.is_verbose():
+                        print(f"Reading batch {prev} to {end}")
+                    batch_cmd = f'print(ddl_str[{prev}:{end}])'
+                    batch_resp = self.submit_command(cid, ec_id, batch_cmd)
+                    if batch_resp['resultType'] != 'text':
+                        batch_resp['table'] = '{0}.{1}'.format(db_name, table_name)
+                        err_log.write(json.dumps(batch_resp) + '\n')
+                        return -1
+                    else:
+                        fp.write(batch_resp['data'].rstrip())
+                    prev = end
+                # this will either be the full DDL size or the remaining size after reading batches from the loop above
+                last_batch_len = ddl_len - prev
+                if self.is_verbose():
+                    print("Last batch size / initial size:" + str(last_batch_len))
+                if last_batch_len > 0:
+                    new_end = prev + last_batch_len - 1
+                    last_cmd = f'print(ddl_str[{prev}:{new_end}])'
+                    last_batch_resp = self.submit_command(cid, ec_id, last_cmd)
+                    fp.write(last_batch_resp['data'].rstrip())
+                return 0
+
+    def log_all_tables(self, db_name, cid, ec_id, metastore_dir, err_log_path):
         all_tables_cmd = 'all_tables = [x.tableName for x in spark.sql("show tables in {0}").collect()]'.format(db_name)
         results = self.submit_command(cid, ec_id, all_tables_cmd)
         results = self.submit_command(cid, ec_id, 'print(len(all_tables))')
@@ -44,22 +95,17 @@ class HiveClient(ClustersClient):
         num_of_buckets = (num_of_tables // batch_size) + 1     # number of slices of the list to take
 
         all_tables = []
-        with open(err_log_path, 'a') as err_log:
-            for m in range(0, num_of_buckets):
-                tables_slice = 'print(all_tables[{0}:{1}])'.format(batch_size*m, batch_size*(m+1))
-                results = self.submit_command(cid, ec_id, tables_slice)
-                table_names = ast.literal_eval(results['data'])
-                for table_name in table_names:
-                    print("Table: {0}".format(table_name))
-                    ddl_stmt = 'print(spark.sql("show create table {0}.{1}").collect()[0][0])'.format(db_name,
-                                                                                                      table_name)
-                    results = self.submit_command(cid, ec_id, ddl_stmt)
-                    with open(self._export_dir + ms_dir + db_name + '/' + table_name, "w") as fp:
-                        if results['resultType'] == 'text':
-                            fp.write(results['data'])
-                        else:
-                            results['table'] = '{0}.{1}'.format(db_name, table_name)
-                            err_log.write(json.dumps(results) + '\n')
+        for m in range(0, num_of_buckets):
+            tables_slice = 'print(all_tables[{0}:{1}])'.format(batch_size*m, batch_size*(m+1))
+            results = self.submit_command(cid, ec_id, tables_slice)
+            table_names = ast.literal_eval(results['data'])
+            for table_name in table_names:
+                print("Table: {0}".format(table_name))
+                is_successful = self.log_table_ddl(cid,ec_id, db_name, table_name, metastore_dir, err_log_path)
+                if is_successful == 0:
+                    print(f"Exported {db_name}.{table_name}")
+                else:
+                    print("Logging failure")
         return True
 
     def check_if_instance_profiles_exists(self, log_file='instance_profiles.log'):
@@ -83,10 +129,13 @@ class HiveClient(ClustersClient):
                     i += 1
             return i
 
-    def export_database(self, db_name, iam_role=None, ms_dir='metastore/'):
+    def export_database(self, db_name, cluster_name=None, iam_role=None, metastore_dir='metastore/'):
         # check if instance profile exists, ask users to use --users first or enter yes to proceed.
         start = timer()
-        cid = self.launch_cluster(iam_role)
+        if cluster_name:
+            cid = self.start_cluster_by_name(cluster_name)
+        else:
+            cid = self.launch_cluster(iam_role)
         end = timer()
         print("Cluster creation time: " + str(timedelta(seconds=end - start)))
         time.sleep(5)
@@ -95,10 +144,10 @@ class HiveClient(ClustersClient):
         failed_metastore_log_path = self._export_dir + 'failed_metastore.log'
         if os.path.exists(failed_metastore_log_path):
             os.remove(failed_metastore_log_path)
-        os.makedirs(self._export_dir + ms_dir + db_name, exist_ok=True)
-        self.log_all_tables(db_name, cid, ec_id, ms_dir, failed_metastore_log_path)
+        os.makedirs(self._export_dir + metastore_dir + db_name, exist_ok=True)
+        self.log_all_tables(db_name, cid, ec_id, metastore_dir, failed_metastore_log_path)
 
-    def retry_failed_metastore_export(self, cid, failed_metastore_log_path, ms_dir='metastore/'):
+    def retry_failed_metastore_export(self, cid, failed_metastore_log_path, metastore_dir='metastore/'):
         # check if instance profile exists, ask users to use --users first or enter yes to proceed.
         instance_profile_log_path = self._export_dir + 'instance_profiles.log'
         if self.is_aws():
@@ -127,7 +176,7 @@ class HiveClient(ClustersClient):
                         results = self.submit_command(cid, ec_id, ddl_stmt)
                         if results['resultType'] == 'text':
                             err_log_list.remove(table)
-                            with open(self._export_dir + ms_dir + db_name + '/' + table_name, "w") as fp:
+                            with open(self._export_dir + metastore_dir + db_name + '/' + table_name, "w") as fp:
                                 fp.write(results['data'])
                         else:
                             print('failed to get ddl for {0}.{1} with iam role {2}'.format(db_name, table_name,
@@ -142,7 +191,7 @@ class HiveClient(ClustersClient):
         else:
             print("No registered instance profiles to retry export")
 
-    def export_hive_metastore(self, cluster_name = None, ms_dir='metastore/'):
+    def export_hive_metastore(self, cluster_name=None, metastore_dir='metastore/'):
         start = timer()
         if cluster_name:
             cid = self.start_cluster_by_name(cluster_name)
@@ -156,9 +205,9 @@ class HiveClient(ClustersClient):
         failed_metastore_log_path = self._export_dir + 'failed_metastore.log'
         if os.path.exists(failed_metastore_log_path):
             os.remove(failed_metastore_log_path)
-        all_dbs = self.log_all_databases(cid, ec_id, ms_dir)
+        all_dbs = self.log_all_databases(cid, ec_id, metastore_dir)
         for db_name in all_dbs:
-            self.log_all_tables(db_name, cid, ec_id, ms_dir, failed_metastore_log_path)
+            self.log_all_tables(db_name, cid, ec_id, metastore_dir, failed_metastore_log_path)
 
         total_failed_entries = self.get_num_of_lines(failed_metastore_log_path)
         if (not self.is_skip_failed()) and self.is_aws():
@@ -187,8 +236,8 @@ class HiveClient(ClustersClient):
             ddl_results = self.submit_command(cid, ec_id, spark_ddl_statement)
             return ddl_results
 
-    def import_hive_metastore(self, cluster_name=None, ms_dir='metastore'):
-        ms_local_dir = self._export_dir + ms_dir
+    def import_hive_metastore(self, cluster_name=None, metastore_dir='metastore'):
+        metastore_local_dir = self._export_dir + metastore_dir
         if cluster_name:
             cid = self.start_cluster_by_name(cluster_name)
         else:
@@ -196,11 +245,11 @@ class HiveClient(ClustersClient):
         time.sleep(2)
         ec_id = self.get_execution_context(cid)
         # get local databases
-        db_list = os.listdir(ms_local_dir)
+        db_list = os.listdir(metastore_local_dir)
         # iterate over the databases saved locally
         for db in db_list:
             # get the local database path to list tables
-            local_db_path = ms_local_dir + '/' + db
+            local_db_path = metastore_local_dir + '/' + db
             self.create_database_db(db, ec_id, cid)
             if os.path.isdir(local_db_path):
                 # all databases should be directories, no files at this level
@@ -209,7 +258,7 @@ class HiveClient(ClustersClient):
                 for x in tables:
                     # build the path for the table where the ddl is stored
                     print("Importing table {0}.{1}".format(db, x))
-                    local_table_ddl = ms_local_dir + '/' + db + '/' + x
+                    local_table_ddl = metastore_local_dir + '/' + db + '/' + x
                     is_successful = self.apply_table_ddl(local_table_ddl, ec_id, cid)
                     print(is_successful)
             else:

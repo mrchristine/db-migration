@@ -45,7 +45,7 @@ class dbclient:
 
     def test_connection(self):
         # verify the proper url settings to configure this client
-        if self._url[-4:] != '.com':
+        if self._url[-4:] != '.com' and self._url[-4:] != '.net':
             print("Hostname should end in '.com'")
             return -1
         results = requests.get(self._url + '/api/2.0/clusters/spark-versions', headers=self._token,

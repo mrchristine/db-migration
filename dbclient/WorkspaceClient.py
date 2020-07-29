@@ -191,16 +191,28 @@ class WorkspaceClient(dbclient):
         end = timer()
         print("Complete Directories ACLs Export Time: " + str(timedelta(seconds=end - start)))
 
+    def apply_acl_on_object(self, acl_str):
+        object_acl = json.loads(acl_str)
+        # the object_type
+        object_id_with_type = object_acl.get('object_id', None)
+        api_path = '/permissions' + object_id_with_type
+        acl_list = object_acl.get('access_control_list', None)
+        api_args = {'access_control_list': acl_list}
+        resp = self.patch(api_path, api_args)
+        print(resp)
+        return resp
+
     def import_workspace_acls(self, workspace_log_file='acl_notebooks.log',
                               dir_log_file='acl_directories.log'):
         dir_acl_logs = self._export_dir + dir_log_file
         notebook_acl_logs = self._export_dir + workspace_log_file
         with open(notebook_acl_logs) as nb_acls_fp:
-            for nb_acl in nb_acls_fp:
-                print(nb_acl)
+            for nb_acl_str in nb_acls_fp:
+                self.apply_acl_on_object(nb_acl_str)
         with open(dir_acl_logs) as dir_acls_fp:
-            for dir_acl in dir_acls_fp:
-                print(dir_acl)
+            for dir_acl_str in dir_acls_fp:
+                self.apply_acl_on_object(dir_acl_str)
+        print("Completed import ACLs of Notebooks and Directories")
 
     @staticmethod
     def get_num_of_saved_users(export_dir):
