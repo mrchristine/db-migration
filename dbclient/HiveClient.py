@@ -241,9 +241,11 @@ class HiveClient(ClustersClient):
             path_args = {'path': dbfs_path, 'overwrite': 'true'}
             file_content_json = {'files': open(local_table_path, 'r')}
             put_resp = self.post('/dbfs/put', path_args, files_json=file_content_json)
-            print(put_resp)
-            spark_ddl_cmd = f'with open("/dbfs{dbfs_path}", "r") as fp: tmp_ddl = fp.read(); spark.sql(tmp_ddl)'
-            print(spark_ddl_cmd)
+            if self.is_verbose():
+                print(put_resp)
+            spark_big_ddl_cmd = f'with open("/dbfs{dbfs_path}", "r") as fp: tmp_ddl = fp.read(); spark.sql(tmp_ddl)'
+            ddl_results = self.submit_command(cid, ec_id, spark_big_ddl_cmd)
+            return ddl_results
         else:
             with open(local_table_path, "r") as fp:
                 ddl_statement = fp.read()

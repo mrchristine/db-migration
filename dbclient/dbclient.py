@@ -122,7 +122,7 @@ class dbclient:
             return {'http_status_code': raw_results.status_code}
 
     def post(self, endpoint, json_params, version='2.0', print_json=False, files_json=None):
-        return self.http_req('post', endpoint, json_params, version, print_json)
+        return self.http_req('post', endpoint, json_params, version, print_json, files_json)
 
     def put(self, endpoint, json_params, version='2.0', print_json=False):
         return self.http_req('put', endpoint, json_params, version, print_json)
