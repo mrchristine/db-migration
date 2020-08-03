@@ -72,7 +72,7 @@ class HiveClient(ClustersClient):
                         err_log.write(json.dumps(batch_resp) + '\n')
                         return -1
                     else:
-                        fp.write(batch_resp['data'].rstrip())
+                        fp.write(batch_resp['data'])
                     prev = end
                 # this will either be the full DDL size or the remaining size after reading batches from the loop above
                 last_batch_len = ddl_len - prev
@@ -82,7 +82,7 @@ class HiveClient(ClustersClient):
                     new_end = prev + last_batch_len - 1
                     last_cmd = f'print(ddl_str[{prev}:{new_end}])'
                     last_batch_resp = self.submit_command(cid, ec_id, last_cmd)
-                    fp.write(last_batch_resp['data'].rstrip())
+                    fp.write(last_batch_resp['data'])
                 return 0
 
     def log_all_tables(self, db_name, cid, ec_id, metastore_dir, err_log_path):
@@ -226,15 +226,30 @@ class HiveClient(ClustersClient):
 
     @staticmethod
     def get_spark_ddl(table_ddl):
+        """
+        Formats the provided DDL into spark.sql() command to run remotely
+        """
         spark_ddl = 'spark.sql(""" {0} """)'.format(table_ddl)
         return spark_ddl
 
-    def apply_table_ddl(self, local_table_dir, ec_id, cid):
-        with open(local_table_dir, "r") as fp:
-            ddl_statement = fp.read()
-            spark_ddl_statement = self.get_spark_ddl(ddl_statement)
-            ddl_results = self.submit_command(cid, ec_id, spark_ddl_statement)
-            return ddl_results
+    def apply_table_ddl(self, local_table_path, ec_id, cid):
+        # get file size in bytes
+        f_size_bytes = os.path.getsize(local_table_path)
+        if f_size_bytes > 1024:
+            # upload first to tmp DBFS path and apply
+            dbfs_path = '/tmp/migration/tmp_ddl.txt'
+            path_args = {'path': dbfs_path, 'overwrite': 'true'}
+            file_content_json = {'files': open(local_table_path, 'r')}
+            put_resp = self.post('/dbfs/put', path_args, files_json=file_content_json)
+            print(put_resp)
+            spark_ddl_cmd = f'with open("/dbfs{dbfs_path}", "r") as fp: tmp_ddl = fp.read(); spark.sql(tmp_ddl)'
+            print(spark_ddl_cmd)
+        else:
+            with open(local_table_path, "r") as fp:
+                ddl_statement = fp.read()
+                spark_ddl_statement = self.get_spark_ddl(ddl_statement)
+                ddl_results = self.submit_command(cid, ec_id, spark_ddl_statement)
+                return ddl_results
 
     def import_hive_metastore(self, cluster_name=None, metastore_dir='metastore'):
         metastore_local_dir = self._export_dir + metastore_dir
@@ -246,6 +261,8 @@ class HiveClient(ClustersClient):
         ec_id = self.get_execution_context(cid)
         # get local databases
         db_list = os.listdir(metastore_local_dir)
+        # make directory in DBFS root bucket path for tmp data
+        resp = self.post('/dbfs/mkdirs', {'path': '/tmp/migration/'})
         # iterate over the databases saved locally
         for db in db_list:
             # get the local database path to list tables

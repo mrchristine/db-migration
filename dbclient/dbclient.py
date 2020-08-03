@@ -83,7 +83,7 @@ class dbclient:
         results['http_status_code'] = raw_results.status_code
         return results
 
-    def http_req(self, http_type, endpoint, json_params, version='2.0', print_json=False):
+    def http_req(self, http_type, endpoint, json_params, version='2.0', print_json=False, files_json=None):
         if version:
             ver = version
         full_endpoint = self._url + '/api/{0}'.format(ver) + endpoint
@@ -91,8 +91,12 @@ class dbclient:
             print("{0}: {1}".format(http_type, full_endpoint))
         if json_params:
             if http_type == 'post':
-                raw_results = requests.post(full_endpoint, headers=self._token,
-                                            json=json_params, verify=self._verify_ssl)
+                if files_json:
+                    raw_results = requests.post(full_endpoint, headers=self._token,
+                                                data=json_params, files=files_json, verify=self._verify_ssl)
+                else:
+                    raw_results = requests.post(full_endpoint, headers=self._token,
+                                                json=json_params, verify=self._verify_ssl)
             if http_type == 'put':
                 raw_results = requests.put(full_endpoint, headers=self._token,
                                            json=json_params, verify=self._verify_ssl)
@@ -117,7 +121,7 @@ class dbclient:
         else:
             return {'http_status_code': raw_results.status_code}
 
-    def post(self, endpoint, json_params, version='2.0', print_json=False):
+    def post(self, endpoint, json_params, version='2.0', print_json=False, files_json=None):
         return self.http_req('post', endpoint, json_params, version, print_json)
 
     def put(self, endpoint, json_params, version='2.0', print_json=False):
