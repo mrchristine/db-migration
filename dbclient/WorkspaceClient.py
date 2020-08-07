@@ -34,10 +34,39 @@ class WorkspaceClient(dbclient):
         """
         user_export_dir = self._export_dir + local_export_dir
         user_root = '/Users/' + username.rstrip().lstrip()
-        self._export_dir = user_export_dir + '/{0}/'.format(username)
+        self.set_export_dir(user_export_dir + '/{0}/'.format(username))
         print("Export path: {0}".format(self._export_dir))
         self.log_all_workspace_items(ws_path=user_root)
         self.download_notebooks(ws_dir='user_artifacts/')
+
+    def import_user_home(self, username, local_export_dir):
+        """
+        Import the provided user's home directory
+        logs/user_exports/{{USERNAME}}/ stores the log files to understand what was exported
+        logs/user_exports/{{USERNAME}}/user_artifacts/ stores the notebook contents
+        :param username: user's home directory to export
+        :return: None
+        """
+        user_import_dir = self._export_dir + local_export_dir
+        if self.does_user_exist(username):
+            print("Yes, we can upload since the user exists")
+        else:
+            print("User must exist before we upload the notebook contents. Please add the user to the platform first")
+        user_root = '/Users/' + username.rstrip().lstrip()
+        self.set_export_dir(user_import_dir + '/{0}/'.format(username))
+        print("Import local path: {0}".format(self.get_export_dir()))
+        notebook_dir = self.get_export_dir() + 'user_artifacts/'
+        for root, subdirs, files in os.walk(notebook_dir):
+            upload_dir = '/' + root.replace(notebook_dir, '')
+            for f in files:
+                # get full path for the local notebook file
+                local_file_path = os.path.join(root, f)
+                # create upload path and remove file format extension
+                ws_file_path = (upload_dir + '/' + f).replace('.dbc', '')
+                print(local_file_path)
+                print(ws_file_path)
+        #self.log_all_workspace_items(ws_path=user_root)
+        #self.download_notebooks(ws_dir='user_artifacts/')
 
     def download_notebooks(self, ws_log_file='user_workspace.log', ws_dir='artifacts/'):
         """

@@ -141,6 +141,9 @@ def get_import_parser():
     parser.add_argument('--workspace-acls', action='store_true',
                         help='Permissions for workspace objects to export')
 
+    parser.add_argument('--import-home', action='store',
+                        help='User workspace name to import, typically the users email address')
+
     # import all notebooks
     parser.add_argument('--archive-missing', action='store_true',
                         help='Import all missing users into the top level /Archive/ directory.')

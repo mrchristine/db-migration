@@ -137,6 +137,12 @@ class dbclient:
             to_return.append(F(elem))
         return to_return
 
+    def set_export_dir(self, dir_location):
+        self._export_dir = dir_location
+
+    def get_export_dir(self):
+        return self._export_dir
+
     def get_latest_spark_version(self):
         versions = self.get('/clusters/spark-versions')['versions']
         v_sorted = sorted(versions, key=lambda i: i['key'], reverse=True)

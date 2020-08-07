@@ -75,11 +75,13 @@ class HiveClient(ClustersClient):
                         fp.write(batch_resp['data'])
                     prev = end
                 # this will either be the full DDL size or the remaining size after reading batches from the loop above
-                last_batch_len = ddl_len - prev
-                if self.is_verbose():
-                    print("Last batch size / initial size:" + str(last_batch_len))
+                read_until_position = prev - 1
+                last_batch_len = ddl_len - read_until_position
                 if last_batch_len > 0:
                     new_end = prev + last_batch_len - 1
+                    if self.is_verbose():
+                        print("Last batch size / initial size:" + str(last_batch_len))
+                        print(f"Reading batch {prev} to {new_end}")
                     last_cmd = f'print(ddl_str[{prev}:{new_end}])'
                     last_batch_resp = self.submit_command(cid, ec_id, last_cmd)
                     fp.write(last_batch_resp['data'])

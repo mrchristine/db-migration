@@ -27,6 +27,16 @@ def main():
         print(url, token)
     now = str(datetime.now())
 
+    if args.import_home:
+        username = args.import_home
+        print("Importing home directory: {0}".format(username))
+        ws_c = WorkspaceClient(client_config)
+        start = timer()
+        # log notebooks and libraries
+        ws_c.import_user_home(username, 'user_exports')
+        end = timer()
+        print("Complete Single User Import Time: " + str(timedelta(seconds=end - start)))
+
     if args.workspace:
         print("Import the complete workspace at {0}".format(now))
         print("Import on {0}".format(url))
