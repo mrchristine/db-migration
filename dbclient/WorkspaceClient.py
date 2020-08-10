@@ -26,6 +26,49 @@ def get_user_import_args(full_local_path, nb_full_path):
 
 class WorkspaceClient(dbclient):
 
+    @staticmethod
+    def is_user_ws_item(ws_dir):
+        path_list = [x for x in ws_dir.split('/') if x]
+        if len(path_list) >= 2 and path_list[0] == 'Users':
+            return True
+        return False
+
+    @staticmethod
+    def is_user_ws_root(ws_dir):
+        if ws_dir == '/Users/' or ws_dir == '/Users':
+            return True
+        path_list = [x for x in ws_dir.split('/') if x]
+        print(path_list)
+        if len(path_list) == 2 and path_list[0] == 'Users':
+            return True
+        return False
+
+    @staticmethod
+    def get_user(ws_dir):
+        path_list = [x for x in ws_dir.split('/') if x]
+        if len(path_list) < 2:
+            raise ValueError("Error: Not a users workspace directory")
+        return path_list[1]
+
+    @staticmethod
+    def is_user_trash(ws_path):
+        path_list = ws_path.split('/')
+        if len(path_list) == 4:
+            if path_list[1] == 'Users' and path_list[3] == 'Trash':
+                return True
+        return False
+
+    @staticmethod
+    def get_num_of_saved_users(export_dir):
+        # get current number of saved workspaces
+        user_home_dir = export_dir + 'Users'
+        ls = os.listdir(user_home_dir)
+        num_of_users = 0
+        for x in ls:
+            if os.path.isdir(user_home_dir + '/' + x):
+                num_of_users += 1
+        return num_of_users
+
     def export_user_home(self, username, local_export_dir):
         """
         Export the provided user's home directory
@@ -58,15 +101,28 @@ class WorkspaceClient(dbclient):
         notebook_dir = self.get_export_dir() + 'user_artifacts/'
         for root, subdirs, files in os.walk(notebook_dir):
             upload_dir = '/' + root.replace(notebook_dir, '')
+            # if the upload dir is the 2 root directories, skip and continue
+            if upload_dir == '/' or upload_dir == '/Users':
+                continue
+            print("UPLOAD DIR:")
+            print(upload_dir)
+            if not self.is_user_ws_root(upload_dir):
+                # if it is not the /Users/example@example.com/ root path, don't create the folder
+                resp_mkdirs = self.post(WS_MKDIRS, {'path': upload_dir})
+                print(resp_mkdirs)
             for f in files:
                 # get full path for the local notebook file
                 local_file_path = os.path.join(root, f)
                 # create upload path and remove file format extension
-                ws_file_path = (upload_dir + '/' + f).replace('.dbc', '')
-                print(local_file_path)
-                print(ws_file_path)
-        #self.log_all_workspace_items(ws_path=user_root)
-        #self.download_notebooks(ws_dir='user_artifacts/')
+                ws_file_path = upload_dir + '/' + f
+                # generate json args with binary data for notebook to upload to the workspace path
+                nb_input_args = get_user_import_args(local_file_path, ws_file_path)
+                # call import to the workspace
+                if self.is_verbose():
+                    print("Path: {0}".format(nb_input_args['path']))
+                resp_upload = self.post(WS_IMPORT, nb_input_args)
+                if self.is_verbose():
+                    print(resp_upload)
 
     def download_notebooks(self, ws_log_file='user_workspace.log', ws_dir='artifacts/'):
         """
@@ -138,14 +194,6 @@ class WorkspaceClient(dbclient):
             os.remove(workspace_dir_log)
         if os.path.exists(libs_log):
             os.remove(libs_log)
-
-    @staticmethod
-    def is_user_trash(ws_path):
-        path_list = ws_path.split('/')
-        if len(path_list) == 4:
-            if path_list[1] == 'Users' and path_list[3] == 'Trash':
-                return True
-        return False
 
     def log_all_workspace_items(self, ws_path='/', workspace_log_file='user_workspace.log',
                                 libs_log_file='libraries.log', dir_log_file='user_dirs.log'):
@@ -243,17 +291,6 @@ class WorkspaceClient(dbclient):
                 self.apply_acl_on_object(dir_acl_str)
         print("Completed import ACLs of Notebooks and Directories")
 
-    @staticmethod
-    def get_num_of_saved_users(export_dir):
-        # get current number of saved workspaces
-        user_home_dir = export_dir + 'Users'
-        ls = os.listdir(user_home_dir)
-        num_of_users = 0
-        for x in ls:
-            if os.path.isdir(user_home_dir + '/' + x):
-                num_of_users += 1
-        return num_of_users
-
     def get_current_users(self):
         # get the num of defined user home directories in the new workspace
         # if this is 0, we must create the users before importing the notebooks over.
@@ -263,29 +300,6 @@ class WorkspaceClient(dbclient):
             return len(ws_users)
         else:
             return 0
-
-    @staticmethod
-    def is_user_ws_item(ws_dir):
-        path_list = [x for x in ws_dir.split('/') if x]
-        if len(path_list) >= 2 and path_list[0] == 'Users':
-            return True
-        return False
-
-    @staticmethod
-    def is_user_ws_root(ws_dir):
-        if ws_dir == '/Users/' or ws_dir == '/Users':
-            return True
-        path_list = [x for x in ws_dir.split('/') if x]
-        if len(path_list) == 2 and path_list[0] == 'Users':
-            return True
-        return False
-
-    @staticmethod
-    def get_user(ws_dir):
-        path_list = [x for x in ws_dir.split('/') if x]
-        if len(path_list) < 2:
-            raise ValueError("Error: Not a users workspace directory")
-        return path_list[1]
 
     def does_user_exist(self, username):
         stat = self.get(WS_STATUS, {'path': '/Users/{0}'.format(username)})
