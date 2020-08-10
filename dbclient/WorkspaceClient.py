@@ -28,6 +28,10 @@ class WorkspaceClient(dbclient):
 
     @staticmethod
     def is_user_ws_item(ws_dir):
+        """
+        Checks if this is a user artifact / notebook.
+        We can't create user home folders, hence we need to identify user items
+        """
         path_list = [x for x in ws_dir.split('/') if x]
         if len(path_list) >= 2 and path_list[0] == 'Users':
             return True
@@ -35,6 +39,9 @@ class WorkspaceClient(dbclient):
 
     @staticmethod
     def is_user_ws_root(ws_dir):
+        """
+        Checke if we're at the users home folder to skip folder creation
+        """
         if ws_dir == '/Users/' or ws_dir == '/Users':
             return True
         path_list = [x for x in ws_dir.split('/') if x]
@@ -45,6 +52,9 @@ class WorkspaceClient(dbclient):
 
     @staticmethod
     def get_user(ws_dir):
+        """
+        returns the username of the workspace / folder path
+        """
         path_list = [x for x in ws_dir.split('/') if x]
         if len(path_list) < 2:
             raise ValueError("Error: Not a users workspace directory")
@@ -52,6 +62,9 @@ class WorkspaceClient(dbclient):
 
     @staticmethod
     def is_user_trash(ws_path):
+        """
+        checks if this is the users home folder trash directory, which is a special dir
+        """
         path_list = ws_path.split('/')
         if len(path_list) == 4:
             if path_list[1] == 'Users' and path_list[3] == 'Trash':
@@ -60,6 +73,10 @@ class WorkspaceClient(dbclient):
 
     @staticmethod
     def get_num_of_saved_users(export_dir):
+        """
+        returns the number of exported user items to check against number of created users in the new workspace
+        this helps identify if the new workspace is ready for the import, or if we should skip / archive failed imports
+        """
         # get current number of saved workspaces
         user_home_dir = export_dir + 'Users'
         ls = os.listdir(user_home_dir)
@@ -104,8 +121,6 @@ class WorkspaceClient(dbclient):
             # if the upload dir is the 2 root directories, skip and continue
             if upload_dir == '/' or upload_dir == '/Users':
                 continue
-            print("UPLOAD DIR:")
-            print(upload_dir)
             if not self.is_user_ws_root(upload_dir):
                 # if it is not the /Users/example@example.com/ root path, don't create the folder
                 resp_mkdirs = self.post(WS_MKDIRS, {'path': upload_dir})
@@ -135,8 +150,11 @@ class WorkspaceClient(dbclient):
         if not os.path.exists(ws_log):
             raise Exception("Run --workspace first to download full log of all notebooks.")
         with open(ws_log, "r") as fp:
-            for nb in fp:
-                self.download_notebook_helper(nb.rstrip(), export_dir=self._export_dir + ws_dir)
+            # notebook log metadata file now contains object_id to help w/ ACL exports
+            # pull the path from the data to download the individual notebook contents
+            for notebook_data in fp:
+                notebook_path = json.loads(notebook_data).get('path', None).rstrip()
+                self.download_notebook_helper(notebook_path, export_dir=self._export_dir + ws_dir)
 
     def download_notebook_helper(self, notebook_path, export_dir='artifacts/'):
         """
@@ -151,8 +169,9 @@ class WorkspaceClient(dbclient):
         resp = self.get(WS_EXPORT, get_args)
         with open(self._export_dir + 'failed_notebooks.log', 'a') as err_log:
             if resp.get('error_code', None):
-                err_log.write(notebook_path + '\n')
-                return {'error_code': resp.get('error_code'), 'path': notebook_path}
+                err_msg = {'error_code': resp.get('error_code'), 'path': notebook_path}
+                err_log.write(json.dumps(err_msg) + '\n')
+                return err_msg
         nb_path = os.path.dirname(notebook_path)
         if nb_path != '/':
             # path is NOT empty, remove the trailing slash from export_dir
@@ -185,6 +204,9 @@ class WorkspaceClient(dbclient):
 
     def init_workspace_logfiles(self, workspace_log_file='user_workspace.log',
                                 libs_log_file='libraries.log', workspace_dir_log_file='user_dirs.log'):
+        """
+        initialize the logfile locations since we run a recursive function to download notebooks
+        """
         workspace_log = self._export_dir + workspace_log_file
         libs_log = self._export_dir + libs_log_file
         workspace_dir_log = self._export_dir + workspace_dir_log_file
@@ -204,7 +226,6 @@ class WorkspaceClient(dbclient):
         :param libs_log_file: library logfile to store workspace libraries
         :return:
         """
-
         # define log file names for notebooks, folders, and libraries
         workspace_log = self._export_dir + workspace_log_file
         workspace_dir_log = self._export_dir + dir_log_file
@@ -244,6 +265,12 @@ class WorkspaceClient(dbclient):
                                                          libs_log_file=libs_log_file)
 
     def log_acl_to_file(self, artifact_type, read_log_filename, write_log_filename):
+        """
+        generic function to log the notebook/directory ACLs to specific file names
+        :param artifact_type: set('notebooks', 'directories') ACLs to be logged
+        :param read_log_filename: the list of the notebook paths / object ids
+        :param write_log_filename: output file to store object_id acls
+        """
         read_log_path = self._export_dir + read_log_filename
         write_log_path = self._export_dir + write_log_filename
         with open(read_log_path, 'r') as read_fp, open(write_log_path, 'w') as write_fp:
@@ -256,6 +283,11 @@ class WorkspaceClient(dbclient):
 
     def log_all_workspace_acls(self, workspace_log_file='user_workspace.log',
                                dir_log_file='user_dirs.log'):
+        """
+        loop through all notebooks and directories to store their associated ACLs
+        :param workspace_log_file: input file for user notebook listing
+        :param dir_log_file: input file for user directory listing
+        """
         # define log file names for notebooks, folders, and libraries
         print("Exporting the notebook permissions")
         start = timer()
