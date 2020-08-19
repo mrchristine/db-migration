@@ -301,6 +301,12 @@ class WorkspaceClient(dbclient):
         print("Complete Directories ACLs Export Time: " + str(timedelta(seconds=end - start)))
 
     def apply_acl_on_object(self, acl_str):
+        """
+        apply the acl definition to the workspace object
+        the object_id contains the {{type/object_id}} format which helps craft the api endpoint
+        setting acl definitions uses the patch rest api verb
+        :param acl_str: the complete string from the logfile. contains object defn and acl lists
+        """
         object_acl = json.loads(acl_str)
         # the object_type
         object_id_with_type = object_acl.get('object_id', None)
@@ -313,6 +319,9 @@ class WorkspaceClient(dbclient):
 
     def import_workspace_acls(self, workspace_log_file='acl_notebooks.log',
                               dir_log_file='acl_directories.log'):
+        """
+        import the notebook and directory acls by looping over notebook and dir logfiles
+        """
         dir_acl_logs = self._export_dir + dir_log_file
         notebook_acl_logs = self._export_dir + workspace_log_file
         with open(notebook_acl_logs) as nb_acls_fp:
@@ -324,9 +333,11 @@ class WorkspaceClient(dbclient):
         print("Completed import ACLs of Notebooks and Directories")
 
     def get_current_users(self):
-        # get the num of defined user home directories in the new workspace
-        # if this is 0, we must create the users before importing the notebooks over.
-        # we cannot create the users home directory since its a special type of directory
+        """
+        get the num of defined user home directories in the new workspace
+        if this is 0, we must create the users before importing the notebooks over.
+        we cannot create the users home directory since its a special type of directory
+        """
         ws_users = self.get(WS_LIST, {'path': '/Users/'}).get('objects', None)
         if ws_users:
             return len(ws_users)
@@ -334,12 +345,21 @@ class WorkspaceClient(dbclient):
             return 0
 
     def does_user_exist(self, username):
+        """
+        check if the users home dir exists
+        """
         stat = self.get(WS_STATUS, {'path': '/Users/{0}'.format(username)})
         if stat.get('object_type', None) == 'DIRECTORY':
             return True
         return False
 
     def import_all_workspace_items(self, load_dir='logs/', export_dir='artifacts/', archive_missing=False):
+        """
+        import all notebooks into a new workspace
+        :param load_dir: log directory used for the export
+        :param export_dir: notebook download directory
+        :param archive_missing: whether to put missing users into a /Archive/ top level directory
+        """
         src_dir = load_dir + export_dir
         num_exported_users = self.get_num_of_saved_users(src_dir)
         num_current_users = self.get_current_users()
@@ -394,13 +414,3 @@ class WorkspaceClient(dbclient):
                 if self.is_verbose():
                     print("Path: {0}".format(nb_input_args['path']))
                 resp_upload = self.post(WS_IMPORT, nb_input_args)
-
-    def log_workspace_permissions(self, ws_log='user_workspace.log', dir_log='user_dirs.log'):
-        workspace_logfile = self._export_dir + ws_log
-        dir_logfile = self._export_dir + dir_log
-        with open(workspace_logfile, 'r') as fp:
-            for notebook in fp:
-                print(notebook)
-        with open(dir_logfile, 'r') as fp_dir:
-            for d in fp_dir:
-                print(d)

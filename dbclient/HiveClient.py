@@ -1,7 +1,7 @@
 import ast
 import json
 import os
-import time
+import time, base64
 from datetime import timedelta
 from timeit import default_timer as timer
 
@@ -58,33 +58,23 @@ class HiveClient(ClustersClient):
                 len_resp['table'] = '{0}.{1}'.format(db_name, table_name)
                 err_log.write(json.dumps(len_resp) + '\n')
                 return -1
-            prev = 0
-            batch_size = 1024
-            with open(self._export_dir + metastore_dir + db_name + '/' + table_name, "w") as fp:
-                # this loop doesn't execute if the length of the DDL is smaller than the batch size
-                for end in range(batch_size, int(ddl_len), batch_size):
-                    if self.is_verbose():
-                        print(f"Reading batch {prev} to {end}")
-                    batch_cmd = f'print(ddl_str[{prev}:{end}])'
-                    batch_resp = self.submit_command(cid, ec_id, batch_cmd)
-                    if batch_resp['resultType'] != 'text':
-                        batch_resp['table'] = '{0}.{1}'.format(db_name, table_name)
-                        err_log.write(json.dumps(batch_resp) + '\n')
-                        return -1
-                    else:
-                        fp.write(batch_resp['data'])
-                    prev = end
-                # this will either be the full DDL size or the remaining size after reading batches from the loop above
-                read_until_position = prev - 1
-                last_batch_len = ddl_len - read_until_position
-                if last_batch_len > 0:
-                    new_end = prev + last_batch_len - 1
-                    if self.is_verbose():
-                        print("Last batch size / initial size:" + str(last_batch_len))
-                        print(f"Reading batch {prev} to {new_end}")
-                    last_cmd = f'print(ddl_str[{prev}:{new_end}])'
-                    last_batch_resp = self.submit_command(cid, ec_id, last_cmd)
-                    fp.write(last_batch_resp['data'])
+            # if the len is over 2k chars then export to file
+            if ddl_len > 2048:
+                # create the dbfs tmp path for exports / imports. no-op if exists
+                resp = self.post('/dbfs/mkdirs', {'path': '/tmp/migration/'})
+                # save the ddl to the tmp path on dbfs
+                save_ddl_cmd = "with open('/dbfs/tmp/migration/tmp_export_ddl.txt', 'w') as fp: fp.write(ddl_str)"
+                save_resp = self.submit_command(cid, ec_id, save_ddl_cmd)
+                # read that data using the dbfs rest endpoint which can handle 2MB of text easily
+                read_args = {'path': '/tmp/migration/tmp_export_ddl.txt'}
+                read_resp = self.get('/dbfs/read', read_args)
+                with open(self._export_dir + metastore_dir + db_name + '/' + table_name, "w") as fp:
+                    fp.write(base64.b64decode(read_resp.get('data')).decode('utf-8'))
+            else:
+                export_ddl_cmd = 'print(ddl_str)'
+                ddl_resp = self.submit_command(cid, ec_id, export_ddl_cmd)
+                with open(self._export_dir + metastore_dir + db_name + '/' + table_name, "w") as fp:
+                    fp.write(ddl_resp.get('data'))
                 return 0
 
     def log_all_tables(self, db_name, cid, ec_id, metastore_dir, err_log_path):
@@ -239,7 +229,7 @@ class HiveClient(ClustersClient):
         f_size_bytes = os.path.getsize(local_table_path)
         if f_size_bytes > 1024:
             # upload first to tmp DBFS path and apply
-            dbfs_path = '/tmp/migration/tmp_ddl.txt'
+            dbfs_path = '/tmp/migration/tmp_import_ddl.txt'
             path_args = {'path': dbfs_path, 'overwrite': 'true'}
             file_content_json = {'files': open(local_table_path, 'r')}
             put_resp = self.post('/dbfs/put', path_args, files_json=file_content_json)

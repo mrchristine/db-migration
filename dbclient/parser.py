@@ -169,7 +169,7 @@ def get_import_parser():
                         help='Cluster name to import the metastore to a specific cluster. Cluster will be started.')
     # skip failures
     parser.add_argument('--skip-failed', action='store_true', default=False,
-                        help='Skip retries for any failed exports.')
+                        help='Skip missing users that do not exist')
 
     # get azure logs
     parser.add_argument('--azure', action='store_true',
