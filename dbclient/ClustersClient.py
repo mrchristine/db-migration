@@ -51,7 +51,7 @@ class ClustersClient(dbclient):
         # job clusters have specific format, job-JOBID-run-RUNID
         re_expr = re.compile("job-\d+-run-\d+$")
         clean_cluster_list = []
-        with open(self._export_dir + log_file, 'w') as log_fp:
+        with open(self.get_export_dir() + log_file, 'w') as log_fp:
             for cluster in cluster_list:
                 cluster_name = cluster['cluster_name']
                 if re_expr.match(cluster_name) or cluster_name.startswith(ml_model_pattern):
@@ -60,13 +60,20 @@ class ClustersClient(dbclient):
                     clean_cluster_list.append(cluster)
         return clean_cluster_list
 
+    def log_cluster_acls(self, log_file='clusters.log'):
+        """
+        Export all cluster permissions to allow replay to new environments
+        :return:
+        """
+        cluster_log = self.get_export_dir() + log_file
+
     def log_cluster_configs(self, log_file='clusters.log'):
         """
         Log the current cluster configs in json file
         :param log_file:
         :return:
         """
-        cluster_log = self._export_dir + log_file
+        cluster_log = self.get_export_dir() + log_file
         # pinned by cluster_user is a flag per cluster
         cl_raw = self.get_cluster_list(False)
         cl = self.remove_automated_clusters(cl_raw)
@@ -131,7 +138,7 @@ class ClustersClient(dbclient):
         :param log_file:
         :return:
         """
-        cluster_log = self._export_dir + log_file
+        cluster_log = self.get_export_dir() + log_file
         if not os.path.exists(cluster_log):
             print("No clusters to import.")
             return
@@ -174,7 +181,7 @@ class ClustersClient(dbclient):
             self.post('/clusters/permanent-delete', {'cluster_id': x['cluster_id']})
 
     def log_instance_profiles(self, log_file='instance_profiles.log'):
-        ip_log = self._export_dir + log_file
+        ip_log = self.get_export_dir() + log_file
         ips = self.get('/instance-profiles/list').get('instance_profiles', None)
         if ips:
             with open(ip_log, "w") as fp:
@@ -183,7 +190,7 @@ class ClustersClient(dbclient):
 
     def import_instance_profiles(self, log_file='instance_profiles.log'):
         # currently an AWS only operation
-        ip_log = self._export_dir + log_file
+        ip_log = self.get_export_dir() + log_file
         if not os.path.exists(ip_log):
             print("No instance profiles to import.")
             return
@@ -203,7 +210,7 @@ class ClustersClient(dbclient):
                     print("Skipping since profile exists: {0}".format(ip_arn))
 
     def log_instance_pools(self, log_file='instance_pools.log'):
-        pool_log = self._export_dir + log_file
+        pool_log = self.get_export_dir() + log_file
         pools = self.get('/instance-pools/list').get('instance_pools', None)
         if pools:
             with open(pool_log, "w") as fp:
@@ -211,7 +218,7 @@ class ClustersClient(dbclient):
                     fp.write(json.dumps(x) + '\n')
 
     def import_instance_pools(self, log_file='instance_pools.log'):
-        pool_log = self._export_dir + log_file
+        pool_log = self.get_export_dir() + log_file
         if not os.path.exists(pool_log):
             print("No instance pools to import.")
             return
@@ -221,7 +228,7 @@ class ClustersClient(dbclient):
                 pool_resp = self.post('/instance-pools/create', pool_conf)
 
     def get_instance_pool_id_mapping(self, log_file='instance_pools.log'):
-        pool_log = self._export_dir + log_file
+        pool_log = self.get_export_dir() + log_file
         current_pools = self.get('/instance-pools/list').get('instance_pools', None)
         if not current_pools:
             return None

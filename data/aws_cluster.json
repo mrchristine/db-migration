@@ -7,12 +7,10 @@
       "availability": "SPOT_WITH_FALLBACK",
       "zone_id": "us-west-2b",
       "spot_bid_price_percent": 100,
-      "ebs_volume_type": "GENERAL_PURPOSE_SSD",
-      "ebs_volume_count": 1,
-      "ebs_volume_size": 100
+      "ebs_volume_count": 0
   },
-  "driver_node_type_id": "m4.xlarge",
-  "node_type_id": "m4.xlarge",
+  "driver_node_type_id": "i3.xlarge",
+  "node_type_id": "i3.xlarge",
   "spark_env_vars": {
       "PYSPARK_PYTHON": "/databricks/python3/bin/python3"
   },

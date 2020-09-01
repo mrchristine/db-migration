@@ -14,7 +14,7 @@ class LibraryClient(dbclient):
             return cl['clusters']
 
     def log_library_details(self, log_file='lib_details.log'):
-        libs_log = self._export_dir + log_file
+        libs_log = self.get_export_dir() + log_file
         all_libs = self.get('/libraries/list', version='1.2')
         with open(libs_log, "w") as fp:
             for x in all_libs.get('elements', None):
@@ -22,7 +22,7 @@ class LibraryClient(dbclient):
                 fp.write(json.dumps(lib_details) + '\n')
 
     def log_cluster_libs(self, cl_log_file='attached_cluster_libs.log'):
-        cl_lib_log = self._export_dir + cl_log_file
+        cl_lib_log = self.get_export_dir() + cl_log_file
         cl = self.get_cluster_list(False)
         with open(cl_lib_log, "w") as fp:
             for x in cl:

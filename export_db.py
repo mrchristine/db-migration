@@ -106,6 +106,8 @@ def main():
         cl_c.log_cluster_configs()
         end = timer()
         print("Complete Cluster Export Time: " + str(timedelta(seconds=end - start)))
+
+        cl_c.log_cluster_acls()
         # log the instance pools
         print("Start instance pool logging ...")
         start = timer()

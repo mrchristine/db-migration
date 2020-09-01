@@ -36,7 +36,7 @@ class JobsClient(dbclient):
         return None
 
     def log_job_configs(self, log_file='jobs.log'):
-        jobs_log = self._export_dir + log_file
+        jobs_log = self.get_export_dir() + log_file
         # pinned by cluster_user is a flag per cluster
         jl = self.get_jobs_list(False)
         with open(jobs_log, "w") as log_fp:
@@ -44,7 +44,7 @@ class JobsClient(dbclient):
                 log_fp.write(json.dumps(x) + '\n')
 
     def import_job_configs(self, log_file='jobs.log'):
-        jobs_log = self._export_dir + log_file
+        jobs_log = self.get_export_dir() + log_file
         if not os.path.exists(jobs_log):
             print("No job configurations to import.")
             return
@@ -90,7 +90,7 @@ class JobsClient(dbclient):
         :param log_file:
         :return:
         """
-        cluster_logfile = self._export_dir + log_file
+        cluster_logfile = self.get_export_dir() + log_file
         current_cl = self.get('/clusters/list').get('clusters', None)
         old_clusters = {}
         # build dict with old cluster name to cluster id mapping

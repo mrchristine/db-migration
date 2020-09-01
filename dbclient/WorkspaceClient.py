@@ -92,10 +92,10 @@ class WorkspaceClient(dbclient):
         :param username: user's home directory to export
         :return: None
         """
-        user_export_dir = self._export_dir + local_export_dir
+        user_export_dir = self.get_export_dir() + local_export_dir
         user_root = '/Users/' + username.rstrip().lstrip()
         self.set_export_dir(user_export_dir + '/{0}/'.format(username))
-        print("Export path: {0}".format(self._export_dir))
+        print("Export path: {0}".format(self.get_export_dir()))
         self.log_all_workspace_items(ws_path=user_root)
         self.download_notebooks(ws_dir='user_artifacts/')
 
@@ -107,7 +107,7 @@ class WorkspaceClient(dbclient):
         :param username: user's home directory to export
         :return: None
         """
-        user_import_dir = self._export_dir + local_export_dir
+        user_import_dir = self.get_export_dir() + local_export_dir
         if self.does_user_exist(username):
             print("Yes, we can upload since the user exists")
         else:
@@ -146,7 +146,7 @@ class WorkspaceClient(dbclient):
         :param ws_dir: export directory to store all notebooks
         :return: None
         """
-        ws_log = self._export_dir + ws_log_file
+        ws_log = self.get_export_dir() + ws_log_file
         if not os.path.exists(ws_log):
             raise Exception("Run --workspace first to download full log of all notebooks.")
         with open(ws_log, "r") as fp:
@@ -154,7 +154,7 @@ class WorkspaceClient(dbclient):
             # pull the path from the data to download the individual notebook contents
             for notebook_data in fp:
                 notebook_path = json.loads(notebook_data).get('path', None).rstrip()
-                self.download_notebook_helper(notebook_path, export_dir=self._export_dir + ws_dir)
+                self.download_notebook_helper(notebook_path, export_dir=self.get_export_dir() + ws_dir)
 
     def download_notebook_helper(self, notebook_path, export_dir='artifacts/'):
         """
@@ -167,7 +167,7 @@ class WorkspaceClient(dbclient):
         if self.is_verbose():
             print("Downloading: {0}".format(get_args['path']))
         resp = self.get(WS_EXPORT, get_args)
-        with open(self._export_dir + 'failed_notebooks.log', 'a') as err_log:
+        with open(self.get_export_dir() + 'failed_notebooks.log', 'a') as err_log:
             if resp.get('error_code', None):
                 err_msg = {'error_code': resp.get('error_code'), 'path': notebook_path}
                 err_log.write(json.dumps(err_msg) + '\n')
@@ -207,9 +207,9 @@ class WorkspaceClient(dbclient):
         """
         initialize the logfile locations since we run a recursive function to download notebooks
         """
-        workspace_log = self._export_dir + workspace_log_file
-        libs_log = self._export_dir + libs_log_file
-        workspace_dir_log = self._export_dir + workspace_dir_log_file
+        workspace_log = self.get_export_dir() + workspace_log_file
+        libs_log = self.get_export_dir() + libs_log_file
+        workspace_dir_log = self.get_export_dir() + workspace_dir_log_file
         if os.path.exists(workspace_log):
             os.remove(workspace_log)
         if os.path.exists(workspace_dir_log):
@@ -227,17 +227,17 @@ class WorkspaceClient(dbclient):
         :return:
         """
         # define log file names for notebooks, folders, and libraries
-        workspace_log = self._export_dir + workspace_log_file
-        workspace_dir_log = self._export_dir + dir_log_file
-        libs_log = self._export_dir + libs_log_file
+        workspace_log = self.get_export_dir() + workspace_log_file
+        workspace_dir_log = self.get_export_dir() + dir_log_file
+        libs_log = self.get_export_dir() + libs_log_file
         if ws_path == '/':
             # default is the root path
             get_args = {'path': '/'}
         else:
             get_args = {'path': ws_path}
 
-        if not os.path.exists(self._export_dir):
-            os.makedirs(self._export_dir, exist_ok=True)
+        if not os.path.exists(self.get_export_dir()):
+            os.makedirs(self.get_export_dir(), exist_ok=True)
         items = self.get(WS_LIST, get_args).get('objects', None)
         if self.is_verbose():
             print("Listing: {0}".format(get_args['path']))
@@ -271,8 +271,8 @@ class WorkspaceClient(dbclient):
         :param read_log_filename: the list of the notebook paths / object ids
         :param write_log_filename: output file to store object_id acls
         """
-        read_log_path = self._export_dir + read_log_filename
-        write_log_path = self._export_dir + write_log_filename
+        read_log_path = self.get_export_dir() + read_log_filename
+        write_log_path = self.get_export_dir() + write_log_filename
         with open(read_log_path, 'r') as read_fp, open(write_log_path, 'w') as write_fp:
             for notebook in read_fp:
                 obj_id = json.loads(notebook).get('object_id', None)
@@ -322,8 +322,8 @@ class WorkspaceClient(dbclient):
         """
         import the notebook and directory acls by looping over notebook and dir logfiles
         """
-        dir_acl_logs = self._export_dir + dir_log_file
-        notebook_acl_logs = self._export_dir + workspace_log_file
+        dir_acl_logs = self.get_export_dir() + dir_log_file
+        notebook_acl_logs = self.get_export_dir() + workspace_log_file
         with open(notebook_acl_logs) as nb_acls_fp:
             for nb_acl_str in nb_acls_fp:
                 self.apply_acl_on_object(nb_acl_str)
@@ -353,14 +353,13 @@ class WorkspaceClient(dbclient):
             return True
         return False
 
-    def import_all_workspace_items(self, load_dir='logs/', export_dir='artifacts/', archive_missing=False):
+    def import_all_workspace_items(self, artifact_dir='artifacts/', archive_missing=False):
         """
         import all notebooks into a new workspace
-        :param load_dir: log directory used for the export
-        :param export_dir: notebook download directory
+        :param artifact_dir: notebook download directory
         :param archive_missing: whether to put missing users into a /Archive/ top level directory
         """
-        src_dir = load_dir + export_dir
+        src_dir = self.get_export_dir() + artifact_dir
         num_exported_users = self.get_num_of_saved_users(src_dir)
         num_current_users = self.get_current_users()
         if num_current_users == 0:

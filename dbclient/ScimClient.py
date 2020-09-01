@@ -6,7 +6,7 @@ import json
 class ScimClient(dbclient):
 
     def log_all_users(self, log_file='users.log'):
-        user_log = self._export_dir + log_file
+        user_log = self.get_export_dir() + log_file
         users = self.get('/preview/scim/v2/Users').get('Resources', None)
         if users:
             with open(user_log, "w") as fp:
@@ -45,7 +45,7 @@ class ScimClient(dbclient):
         return group_json
 
     def log_all_groups(self, group_log_dir='groups/'):
-        group_dir = self._export_dir + group_log_dir
+        group_dir = self.get_export_dir() + group_log_dir
         os.makedirs(group_dir, exist_ok=True)
         group_list = self.get("/preview/scim/v2/Groups").get('Resources', None)
         if group_list:
@@ -55,7 +55,7 @@ class ScimClient(dbclient):
                     fp.write(json.dumps(self.add_username_to_group(x)))
 
     def log_all_secrets(self, log_file='secrets.log'):
-        secrets_log = self._export_dir + log_file
+        secrets_log = self.get_export_dir() + log_file
         secrets = self.get('/secrets/scopes/list')['scopes']
         with open(secrets_log, "w") as fp:
             for x in secrets:
@@ -136,7 +136,7 @@ class ScimClient(dbclient):
         :param user_log_file: logfile of all user properties
         :return:
         """
-        user_log = self._export_dir + user_log_file
+        user_log = self.get_export_dir() + user_log_file
         if not os.path.exists(user_log):
             print("Skipping user entitlement assignment. Logfile does not exist")
             return
@@ -235,8 +235,8 @@ class ScimClient(dbclient):
                 create_resp = self.post('/preview/scim/v2/Users', user_create)
 
     def import_all_users_and_groups(self, user_log_file='users.log', group_log_dir='groups/'):
-        user_log = self._export_dir + user_log_file
-        group_dir = self._export_dir + group_log_dir
+        user_log = self.get_export_dir() + user_log_file
+        group_dir = self.get_export_dir() + group_log_dir
 
         self.import_users(user_log)
         self.import_groups(group_dir)

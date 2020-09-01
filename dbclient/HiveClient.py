@@ -31,7 +31,7 @@ class HiveClient(ClustersClient):
             for db in db_names:
                 all_dbs.append(db)
                 print("Database: {0}".format(db))
-                os.makedirs(self._export_dir + metastore_dir + db, exist_ok=True)
+                os.makedirs(self.get_export_dir() + metastore_dir + db, exist_ok=True)
         return all_dbs
 
     def log_table_ddl(self, cid, ec_id, db_name, table_name, metastore_dir, err_log_path):
@@ -68,12 +68,12 @@ class HiveClient(ClustersClient):
                 # read that data using the dbfs rest endpoint which can handle 2MB of text easily
                 read_args = {'path': '/tmp/migration/tmp_export_ddl.txt'}
                 read_resp = self.get('/dbfs/read', read_args)
-                with open(self._export_dir + metastore_dir + db_name + '/' + table_name, "w") as fp:
+                with open(self.get_export_dir() + metastore_dir + db_name + '/' + table_name, "w") as fp:
                     fp.write(base64.b64decode(read_resp.get('data')).decode('utf-8'))
             else:
                 export_ddl_cmd = 'print(ddl_str)'
                 ddl_resp = self.submit_command(cid, ec_id, export_ddl_cmd)
-                with open(self._export_dir + metastore_dir + db_name + '/' + table_name, "w") as fp:
+                with open(self.get_export_dir() + metastore_dir + db_name + '/' + table_name, "w") as fp:
                     fp.write(ddl_resp.get('data'))
                 return 0
 
@@ -101,7 +101,7 @@ class HiveClient(ClustersClient):
         return True
 
     def check_if_instance_profiles_exists(self, log_file='instance_profiles.log'):
-        ip_log = self._export_dir + log_file
+        ip_log = self.get_export_dir() + log_file
         ips = self.get('/instance-profiles/list').get('instance_profiles', None)
         if ips:
             with open(ip_log, "w") as fp:
@@ -133,15 +133,15 @@ class HiveClient(ClustersClient):
         time.sleep(5)
         ec_id = self.get_execution_context(cid)
         # if metastore failed log path exists, cleanup before re-running
-        failed_metastore_log_path = self._export_dir + 'failed_metastore.log'
+        failed_metastore_log_path = self.get_export_dir() + 'failed_metastore.log'
         if os.path.exists(failed_metastore_log_path):
             os.remove(failed_metastore_log_path)
-        os.makedirs(self._export_dir + metastore_dir + db_name, exist_ok=True)
+        os.makedirs(self.get_export_dir() + metastore_dir + db_name, exist_ok=True)
         self.log_all_tables(db_name, cid, ec_id, metastore_dir, failed_metastore_log_path)
 
     def retry_failed_metastore_export(self, cid, failed_metastore_log_path, metastore_dir='metastore/'):
         # check if instance profile exists, ask users to use --users first or enter yes to proceed.
-        instance_profile_log_path = self._export_dir + 'instance_profiles.log'
+        instance_profile_log_path = self.get_export_dir() + 'instance_profiles.log'
         if self.is_aws():
             do_instance_profile_exist = self.check_if_instance_profiles_exists()
         # get total failed entries
@@ -168,7 +168,7 @@ class HiveClient(ClustersClient):
                         results = self.submit_command(cid, ec_id, ddl_stmt)
                         if results['resultType'] == 'text':
                             err_log_list.remove(table)
-                            with open(self._export_dir + metastore_dir + db_name + '/' + table_name, "w") as fp:
+                            with open(self.get_export_dir() + metastore_dir + db_name + '/' + table_name, "w") as fp:
                                 fp.write(results['data'])
                         else:
                             print('failed to get ddl for {0}.{1} with iam role {2}'.format(db_name, table_name,
@@ -194,7 +194,7 @@ class HiveClient(ClustersClient):
         time.sleep(5)
         ec_id = self.get_execution_context(cid)
         # if metastore failed log path exists, cleanup before re-running
-        failed_metastore_log_path = self._export_dir + 'failed_metastore.log'
+        failed_metastore_log_path = self.get_export_dir() + 'failed_metastore.log'
         if os.path.exists(failed_metastore_log_path):
             os.remove(failed_metastore_log_path)
         all_dbs = self.log_all_databases(cid, ec_id, metastore_dir)
@@ -246,7 +246,7 @@ class HiveClient(ClustersClient):
                 return ddl_results
 
     def import_hive_metastore(self, cluster_name=None, metastore_dir='metastore'):
-        metastore_local_dir = self._export_dir + metastore_dir
+        metastore_local_dir = self.get_export_dir() + metastore_dir
         if cluster_name:
             cid = self.start_cluster_by_name(cluster_name)
         else:

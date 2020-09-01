@@ -31,7 +31,7 @@ class DbfsClient(ClustersClient):
         ec_id = self.get_execution_context(cid)
 
         # get all dbfs mount metadata
-        dbfs_mount_logfile = self._export_dir + 'dbfs_mounts.log'
+        dbfs_mount_logfile = self.get_export_dir() + 'dbfs_mounts.log'
         all_mounts_cmd = 'all_mounts = [{"path": x.mountPoint, "source": x.source, ' \
                                         '"encryptionType": x.encryptionType} for x in dbutils.fs.mounts()]'
         results = self.submit_command(cid, ec_id, all_mounts_cmd)
