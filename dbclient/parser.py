@@ -189,6 +189,9 @@ def get_import_parser():
 
     parser.add_argument('--debug', action='store_true',
                         help='Enable debug logging')
+
+    parser.add_argument('--set-export-dir', action='store',
+                        help='Set the base directory to import artifacts if the export dir was a customized')
     return parser
 
 
