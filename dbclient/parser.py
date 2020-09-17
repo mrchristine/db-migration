@@ -123,6 +123,9 @@ def get_export_parser():
     parser.add_argument('--debug', action='store_true',
                         help='Enable debug logging')
 
+    parser.add_argument('--set-export-dir', action='store',
+                        help='Set the base directory to export artifacts')
+
     return parser
 
 
@@ -200,7 +203,12 @@ def build_client_config(url, token, args):
               'skip_failed': args.skip_failed,
               'debug': args.debug
               }
-    if config['is_aws']:
+    if args.set_export_dir:
+        if args.set_export_dir.rstrip()[-1] != '/':
+            config['export_dir'] = args.set_export_dir + '/'
+        else:
+            config['export_dir'] = args.set_export_dir
+    elif config['is_aws']:
         config['export_dir'] = 'logs/'
     else:
         config['export_dir'] = 'azure_logs/'

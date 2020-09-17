@@ -5,6 +5,10 @@ import json
 
 class ScimClient(dbclient):
 
+    def get_active_users(self):
+        users = self.get('/preview/scim/v2/Users').get('Resources', None)
+        return users if users else None
+
     def log_all_users(self, log_file='users.log'):
         user_log = self.get_export_dir() + log_file
         users = self.get('/preview/scim/v2/Users').get('Resources', None)

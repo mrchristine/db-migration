@@ -1,9 +1,8 @@
 import base64
+from dbclient import *
 from timeit import default_timer as timer
 from datetime import timedelta
 import os
-
-from dbclient import *
 
 WS_LIST = "/workspace/list"
 WS_STATUS = "/workspace/get-status"
@@ -24,7 +23,8 @@ def get_user_import_args(full_local_path, nb_full_path):
     return in_args
 
 
-class WorkspaceClient(dbclient):
+class WorkspaceClient(ScimClient):
+
 
     @staticmethod
     def is_user_ws_item(ws_dir):
@@ -303,7 +303,8 @@ class WorkspaceClient(dbclient):
     def apply_acl_on_object(self, acl_str):
         """
         apply the acl definition to the workspace object
-        the object_id contains the {{type/object_id}} format which helps craft the api endpoint
+        object_id comes from the export data which contains '/type/id' format for this key
+        the object_id contains the {{/type/object_id}} format which helps craft the api endpoint
         setting acl definitions uses the patch rest api verb
         :param acl_str: the complete string from the logfile. contains object defn and acl lists
         """
