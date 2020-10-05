@@ -1,7 +1,7 @@
 ## Databricks Migration Tools
 
 This is a migration package to log all Databricks resources for backup and migration purposes. 
-Packaged is based on python 3.6
+Packaged is based on python 3.6 and DBR 6.x and 7.x releases.
 
 This package uses credentials from the [Databricks CLI](https://docs.databricks.com/user-guide/dev-tools/databricks-cli.html)
 
@@ -19,7 +19,7 @@ Support Matrix for Import and Export Operations:
 | ML Models      | Unsupported  | Unsupported  |
 | Table ACLs     | Unsupported  | Unsupported  |
 
-MLFlow: `https://github.com/amesar/mlflow-tools/tree/master/mlflow_tools/export_import`
+MLFlow Details can be found here: `https://github.com/amesar/mlflow-tools/tree/master/mlflow_tools/export_import`
 
 **Note**: To download **notebooks**, run `--workspace` first to log all notebook paths so we can easily scan and download all notebooks. 
 Once complete, run `--download` to download the full set of logged notebooks. 

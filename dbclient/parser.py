@@ -142,7 +142,7 @@ def get_import_parser():
                         help='Import all notebooks from export dir into the workspace.')
 
     parser.add_argument('--workspace-acls', action='store_true',
-                        help='Permissions for workspace objects to export')
+                        help='Permissions for workspace objects to import')
 
     parser.add_argument('--import-home', action='store',
                         help='User workspace name to import, typically the users email address')

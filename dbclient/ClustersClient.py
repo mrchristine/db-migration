@@ -390,3 +390,10 @@ class ClustersClient(dbclient):
             print("ERROR: ")
             print(end_results.get('summary', None))
         return end_results
+
+    def is_spark_3(self, cid):
+        spark_version = self.get(f'/clusters/get?cluster_id={cid}').get('spark_version', "")
+        if spark_version[0] >= '7':
+            return True
+        else:
+            return False

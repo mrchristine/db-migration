@@ -59,6 +59,7 @@ def main():
         ws_c.import_workspace_acls()
         end = timer()
         print("Complete Workspace acl Import Time: " + str(timedelta(seconds=end - start)))
+
     if args.libs:
         lib_c = LibraryClient(client_config)
         start = timer()
