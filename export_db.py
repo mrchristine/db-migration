@@ -3,6 +3,7 @@ from timeit import default_timer as timer
 from datetime import timedelta, datetime
 from os import makedirs
 
+
 # python 3.6
 def main():
     # define a parser to identify what component to import / export
@@ -90,7 +91,7 @@ def main():
         end = timer()
         print("Complete Group Export Time: " + str(timedelta(seconds=end - start)))
         # log the instance profiles
-        if client_config['is_aws']:
+        if ws_c.is_aws():
             cl_c = ClustersClient(client_config)
             print("Start instance profile logging ...")
             start = timer()
@@ -146,6 +147,7 @@ def main():
         dbfs_c.export_dbfs_mounts()
         end = timer()
         print("Complete Mounts Export Time: " + str(timedelta(seconds=end - start)))
+
 
 if __name__ == '__main__':
     main()

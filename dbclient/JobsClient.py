@@ -4,29 +4,20 @@ from dbclient import *
 
 
 class JobsClient(dbclient):
-    __new_aws_cluster_conf = {
-        "num_workers": 8,
-        "spark_version": "6.1.x-scala2.11",
-        "node_type_id": "i3.xlarge",
-        "spark_env_vars": {
-            "PYSPARK_PYTHON": "/databricks/python3/bin/python3"
-        },
-        "enable_elastic_disk": False,
-    }
 
-    __new_azure_cluster_conf = {
-        "num_workers": 8,
-        "spark_version": "6.2.x-scala2.11",
-        "node_type_id": "Standard_DS3_v2",
-        "spark_env_vars": {
-            "PYSPARK_PYTHON": "/databricks/python3/bin/python3"
-        },
-    }
+    def get_jobs_default_cluster_conf(self):
+        if self.is_aws():
+            cluster_json_file = 'data/default_jobs_cluster_aws.json'
+        else:
+            cluster_json_file = 'data/default_jobs_cluster_azure.json'
+        with open(cluster_json_file, 'r') as fp:
+            cluster_json = json.loads(fp.read())
+            return cluster_json
 
     def get_jobs_list(self, print_json=False):
         """ Returns an array of json objects for jobs """
         jobs = self.get("/jobs/list", print_json)
-        return jobs['jobs']
+        return jobs.get('jobs', [])
 
     def get_job_id(self, name):
         jobs = self.get_jobs_list()
@@ -61,10 +52,7 @@ class JobsClient(dbclient):
                     if not new_cid:
                         print("Existing cluster has been removed. Resetting job to use new cluster.")
                         job_settings.pop('existing_cluster_id')
-                        if self.is_aws():
-                            job_settings['new_cluster'] = self.__new_aws_cluster_conf
-                        else:
-                            job_settings['new_cluster'] = self.__new_azure_cluster_conf
+                        job_settings['new_cluster'] = self.get_jobs_default_cluster_conf()
                     else:
                         job_settings['existing_cluster_id'] = new_cid
                 print("Current JID: {0}".format(job_conf['job_id']))

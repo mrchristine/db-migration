@@ -43,10 +43,7 @@ def main():
         ws_c = WorkspaceClient(client_config)
         start = timer()
         # log notebooks and libraries
-        if args.archive_missing:
-            ws_c.import_all_workspace_items(archive_missing=True)
-        else:
-            ws_c.import_all_workspace_items(archive_missing=False)
+        ws_c.import_all_workspace_items(archive_missing=args.archive_missing)
         end = timer()
         print("Complete Workspace Import Time: " + str(timedelta(seconds=end - start)))
 

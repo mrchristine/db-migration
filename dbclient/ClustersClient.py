@@ -32,13 +32,12 @@ class ClustersClient(dbclient):
         Returns an array of json objects for the running clusters.
         Grab the cluster_name or cluster_id
         """
-        cl = self.get("/clusters/list", print_json=False)
-        if alive:
-            running = filter(lambda x: x['state'] == "RUNNING", cl['clusters'])
+        clusters_list = self.get("/clusters/list", print_json=False).get('clusters', [])
+        if alive and clusters_list:
+            running = filter(lambda x: x['state'] == "RUNNING", clusters_list)
             return list(running)
         else:
-            clusters_list = cl.get('clusters', None)
-            return clusters_list if clusters_list else []
+            return clusters_list
 
     def remove_automated_clusters(self, cluster_list, log_file='skipped_clusters.log'):
         """
@@ -76,26 +75,25 @@ class ClustersClient(dbclient):
         cluster_log = self.get_export_dir() + log_file
         # pinned by cluster_user is a flag per cluster
         cl_raw = self.get_cluster_list(False)
-        cl = self.remove_automated_clusters(cl_raw)
-        ips = self.get('/instance-profiles/list').get('instance_profiles', None)
-        if ips:
+        cluster_list = self.remove_automated_clusters(cl_raw)
+        ip_list = self.get('/instance-profiles/list').get('instance_profiles', [])
+        if ip_list:
             # filter none if we hit a profile w/ a none object
             # generate list of registered instance profiles to check cluster configs against
-            ip_list = list(filter(None, [x.get('instance_profile_arn', None) for x in ips]))
+            nonempty_ip_list = list(filter(None, [x.get('instance_profile_arn', None) for x in ip_list]))
 
         # filter on these items as MVP of the cluster configs
         # https://docs.databricks.com/api/latest/clusters.html#request-structure
         with open(cluster_log, "w") as log_fp:
-            for x in cl:
-                run_properties = set(list(x.keys())) - self.create_configs
+            for cluster_json in cluster_list:
+                run_properties = set(list(cluster_json.keys())) - self.create_configs
                 for p in run_properties:
-                    del x[p]
-                cluster_json = x
+                    del cluster_json[p]
                 if 'aws_attributes' in cluster_json:
                     aws_conf = cluster_json.pop('aws_attributes')
                     iam_role = aws_conf.get('instance_profile_arn', None)
-                    if iam_role:
-                        if (iam_role not in ip_list):
+                    if iam_role and ip_list:
+                        if iam_role not in nonempty_ip_list:
                             print("Skipping log of default IAM role: " + iam_role)
                             del aws_conf['instance_profile_arn']
                             cluster_json['aws_attributes'] = aws_conf
@@ -258,21 +256,23 @@ class ClustersClient(dbclient):
 
     def wait_for_cluster(self, cid):
         c_state = self.get('/clusters/get', {'cluster_id': cid})
-        while c_state['state'] != 'RUNNING':
+        while c_state['state'] != 'RUNNING' and c_state['state'] != 'TERMINATED':
             c_state = self.get('/clusters/get', {'cluster_id': cid})
             print('Cluster state: {0}'.format(c_state['state']))
             time.sleep(2)
+        if c_state['state'] == 'TERMINATED':
+            raise RuntimeError("Cluster is terminated. Please check EVENT history for details")
         return cid
 
     def get_cluster_id_by_name(self, cname, running_only=False):
-        cl = self.get('/clusters/list')
+        cluster_list = self.get('/clusters/list').get('clusters', [])
         if running_only:
-            running = list(filter(lambda x: x['state'] == "RUNNING", cl['clusters']))
+            running = list(filter(lambda x: x['state'] == "RUNNING", cluster_list))
             for x in running:
                 if cname == x['cluster_name']:
                     return x['cluster_id']
         else:
-            for x in cl['clusters']:
+            for x in cluster_list:
                 if cname == x['cluster_name']:
                     return x['cluster_id']
         return None
