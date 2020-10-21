@@ -49,12 +49,14 @@ Export help text:
 ```
 $ python export_db.py --help
 usage: export_db.py [-h] [--users] [--workspace] [--download] [--libs]
-                    [--clusters] [--jobs] [--metastore] [--database DATABASE]
-                    [--iam IAM] [--skip-failed] [--mounts] [--azure] 
-					[--profile PROFILE] [--export-home EXPORT_HOME] [--silent]
-                    [--no-ssl-verification] [--debug]
+                    [--clusters] [--jobs] [--metastore]
+                    [--cluster-name CLUSTER_NAME] [--database DATABASE]
+                    [--iam IAM] [--skip-failed] [--mounts] [--azure]
+                    [--profile PROFILE] [--export-home EXPORT_HOME]
+                    [--workspace-acls] [--silent] [--no-ssl-verification]
+                    [--debug] [--set-export-dir SET_EXPORT_DIR]
 
-Export user workspace artifacts from Databricks
+Export full workspace artifacts from Databricks
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -66,6 +68,9 @@ optional arguments:
   --clusters            Log all the clusters for the environment
   --jobs                Log all the job configs for the environment
   --metastore           log all the metastore table definitions
+  --cluster-name CLUSTER_NAME
+                        Cluster name to export the metastore to a specific
+                        cluster. Cluster will be started.
   --database DATABASE   Database name to export for the metastore. Single
                         database name supported
   --iam IAM             IAM Instance Profile to export metastore entires
@@ -76,27 +81,36 @@ optional arguments:
   --export-home EXPORT_HOME
                         User workspace name to export, typically the users
                         email address
+  --workspace-acls      Permissions for workspace objects to export
   --silent              Silent all logging of export operations.
   --no-ssl-verification
                         Set Verify=False when making http requests.
   --debug               Enable debug logging
+  --set-export-dir SET_EXPORT_DIR
+                        Set the base directory to export artifacts
 ```
 
 Import help text:
 ```
 $ python import_db.py --help
-usage: import_db.py [-h] [--users] [--workspace] [--archive-missing] [--libs]
-                    [--clusters] [--jobs] [--metastore] [--skip-failed]
-                    [--azure] [--profile PROFILE] [--no-ssl-verification]
-                    [--silent] [--debug]
+usage: import_db.py [-h] [--users] [--workspace] [--workspace-acls]
+                    [--import-home IMPORT_HOME] [--archive-missing] [--libs]
+                    [--clusters] [--jobs] [--metastore]
+                    [--cluster-name CLUSTER_NAME] [--skip-failed] [--azure]
+                    [--profile PROFILE] [--no-ssl-verification] [--silent]
+                    [--debug] [--set-export-dir SET_EXPORT_DIR]
 
-Import user workspace artifacts into Databricks
+Import full workspace artifacts into Databricks
 
 optional arguments:
   -h, --help            show this help message and exit
   --users               Import all the users and groups from the logfile.
   --workspace           Import all notebooks from export dir into the
                         workspace.
+  --workspace-acls      Permissions for workspace objects to import
+  --import-home IMPORT_HOME
+                        User workspace name to import, typically the users
+                        email address
   --archive-missing     Import all missing users into the top level /Archive/
                         directory.
   --libs                Import all the libs from the logfile into the
@@ -107,13 +121,16 @@ optional arguments:
   --cluster-name CLUSTER_NAME
                         Cluster name to import the metastore to a specific
                         cluster. Cluster will be started.
-  --skip-failed         Skip retries for any failed exports.
+  --skip-failed         Skip missing users that do not exist
   --azure               Run on Azure. (Default is AWS)
   --profile PROFILE     Profile to parse the credentials
   --no-ssl-verification
                         Set Verify=False when making http requests.
   --silent              Silent all logging of import operations.
   --debug               Enable debug logging
+  --set-export-dir SET_EXPORT_DIR
+                        Set the base directory to import artifacts if the
+                        export dir was a customized
 ```
 
 
