@@ -1,4 +1,6 @@
-import argparse, configparser
+import argparse
+import configparser
+import re
 from os import path
 
 auth_key = ['host',
@@ -24,9 +26,31 @@ def get_login_credentials(creds_path='~/.databrickscfg', profile='DEFAULT'):
         raise ValueError('Unable to find credentials to load for profile. Profile only supports tokens.')
 
 
+def get_export_user_parser():
+    # export workspace items
+    parser = argparse.ArgumentParser(description='Export user(s) workspace artifacts from Databricks')
+
+    parser.add_argument('--silent', action='store_true', default=False,
+                        help='Silent all logging of export operations.')
+    # Don't verify ssl
+    parser.add_argument('--no-ssl-verification', action='store_true',
+                        help='Set Verify=False when making http requests.')
+
+    parser.add_argument('--debug', action='store_true',
+                        help='Enable debug logging')
+
+    parser.add_argument('--set-export-dir', action='store',
+                        help='Set the base directory to export artifacts')
+
+    parser.add_argument('--users', action='store_true',
+                        help='Download user(s) artifacts such as notebooks, cluster specs, jobs')
+
+    return parser
+
+
 def get_export_parser():
     # export workspace items
-    parser = argparse.ArgumentParser(description='Export user workspace artifacts from Databricks')
+    parser = argparse.ArgumentParser(description='Export full workspace artifacts from Databricks')
 
     # export all users and groups
     parser.add_argument('--users', action='store_true',
@@ -69,13 +93,13 @@ def get_export_parser():
 
     # skip failures
     parser.add_argument('--skip-failed', action='store_true', default=False,
-                        help='Skip retries for any failed exports.')
+                        help='Skip retries for any failed hive metastore exports.')
 
     # get mount points
     parser.add_argument('--mounts', action='store_true', default=False,
                         help='Log all mount points.')
     # get azure logs
-    parser.add_argument('--azure', action='store_true', default= False,
+    parser.add_argument('--azure', action='store_true', default=False,
                         help='Run on Azure. (Default is AWS)')
     #
     parser.add_argument('--profile', action='store', default='DEFAULT',
@@ -104,7 +128,7 @@ def get_export_parser():
 
 def get_import_parser():
     # import workspace items parser
-    parser = argparse.ArgumentParser(description='Import user workspace artifacts into Databricks')
+    parser = argparse.ArgumentParser(description='Import full workspace artifacts into Databricks')
 
     # import all users and groups
     parser.add_argument('--users', action='store_true',
@@ -145,7 +169,7 @@ def get_import_parser():
                         help='Cluster name to import the metastore to a specific cluster. Cluster will be started.')
     # skip failures
     parser.add_argument('--skip-failed', action='store_true', default=False,
-                        help='Skip missing users that do not exist')
+                        help='Skip missing users that do not exist when importing user notebooks')
 
     # get azure logs
     parser.add_argument('--azure', action='store_true',
@@ -168,10 +192,22 @@ def get_import_parser():
     return parser
 
 
+def url_validation(url):
+    if '/?o=' in url:
+        # if the workspace_id exists, lets remove it from the URL
+        new_url = re.sub("\/\?o=.*", '', url)
+        return new_url
+    elif 'net/' == url[-4:]:
+        return url[:-1]
+    elif 'com/' == url[-4:]:
+        return url[:-1]
+    return url
+
+
 def build_client_config(url, token, args):
     # cant use netrc credentials because requests module tries to load the credentials into http basic auth headers
     # aws is the default
-    config = {'url': url,
+    config = {'url': url_validation(url),
               'token': token,
               'is_aws': (not args.azure),
               'verbose': (not args.silent),

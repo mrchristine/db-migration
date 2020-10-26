@@ -369,7 +369,7 @@ class WorkspaceClient(ScimClient):
         if (num_current_users < num_exported_users) and (not archive_missing):
             print("Exported number of user workspaces: {0}".format(num_exported_users))
             print("Current number of user workspaces: {0}".format(num_current_users))
-            print("Re-run with the archive flag to load missing users into a separate directory")
+            print("Re-run with the `--archive-missing` flag to load missing users into a separate directory")
             raise ValueError("Current number of users is less than number of user workspaces to import.")
         archive_users = set()
         for root, subdirs, files in os.walk(src_dir):

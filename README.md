@@ -1,51 +1,155 @@
-## Databricks Migration Tools
+# Databricks Migration Tool
 
-This is a migration package to log all Databricks resources for backup and migration purposes. 
-Migration allows a Databricks organization to move resources between Databricks Workspaces, to support moving between different cloud providers or different regions / accounts.  
+This is a migration package to log all Databricks resources for backup and/or migrating to another Databricks workspace.
+Migration allows a Databricks organization to move resources between Databricks Workspaces, 
+to move between different cloud providers, or to move to different regions / accounts.  
 
 Packaged is based on python 3.6 and DBR 6.x and 7.x releases.
 
-This package uses credentials from the [Databricks CLI](https://docs.databricks.com/user-guide/dev-tools/databricks-cli.html)
+This package uses credentials from the 
+[Databricks CLI](https://docs.databricks.com/user-guide/dev-tools/databricks-cli.html)
 
 Support Matrix for Import and Export Operations:
 
 | Component      | Export       | Import       |
 | -------------- | ------------ | ------------ |
-| Notebooks      | Supported    | Supported    |
 | Users / Groups | Supported    | Supported    |
-| Metastore      | Supported    | Supported    |
 | Clusters       | Supported    | Supported    |
+| Notebooks      | Supported    | Supported    |
+| Metastore      | Supported    | Supported    |
 | Jobs           | Supported    | Supported    |
 | Libraries      | Supported    | Unsupported  |
 | Secrets        | Unsupported  | Unsupported  |
 | ML Models      | Unsupported  | Unsupported  |
 | Table ACLs     | Unsupported  | Unsupported  |
 
-MLFlow Details can be found here: `https://github.com/amesar/mlflow-tools/tree/master/mlflow_tools/export_import`
+**Note:** MLFlow objects cannot be exported / imported with this tool.
+For more details, please look [here](https://github.com/amesar/mlflow-tools/tree/master/mlflow_tools/export_import)
 
-**Note**: To download **notebooks**, run `--workspace` first to log all notebook paths so we can easily scan and download all notebooks. 
-Once complete, run `--download` to download the full set of logged notebooks. 
+## Order of Operations
+1. Export users and groups 
+2. Export cluster templates
+3. Export notebook metadata (listing of all notebooks)
+4. Export notebook content 
+5. Export job templates
+6. Export Hive Metastore data 
 
-**Note**: Please verify that Workspace Access Control is enabled prior to migrating users to the new environment.
+By default, artifacts are stored in the `logs/` directory, and `azure_logs/` for Azure artifacts. 
+This is configurable with the `--set-export-dir` flag to specify the log directory.
 
-**Note**: To disable ssl verification pass the flag `--no-ssl-verification`.
-If still getting SSL Error add the following to your current bash shell -
+While exporting Libraries is supported, we do not have an implementation to import library definitions. 
+## Table of Contents
+- [Users and Groups](#users-and-groups)
+- [Clusters](#Clusters)
+- [Notebooks](#Notebooks)
+- [Jobs](#Jobs)
+- [Export Help Text](#export-help-text)
+- [Import Help Text](#import-help-text)
+
+### Users and Groups
+This section uses the [SCIM API](https://docs.databricks.com/dev-tools/api/latest/scim/index.html) to export / import 
+user and groups.  
+[Instance Profiles API](https://docs.databricks.com/dev-tools/api/latest/instance-profiles.html) used 
+to export instance profiles that are tied to user/group entitlements.   
+For AWS users, this section will log the instance profiles used for IAM access to resources. 
+
+To export users / groups, use the following:
+```bash
+python export_db.py --profile DEMO --users
 ```
-export REQUESTS_CA_BUNDLE=""
-export CURL_CA_BUNDLE=""
+
+To import these users:
+```bash
+python import_db.py --profile NEW_DEMO --users
 ```
 
+If you plan to use this tool to export multiple workspaces, you can set the `--set-export-dir` directory to log 
+artifacts into separate logging directories. 
 
-Usage example:
+
+### Clusters
+The section uses the [Clusters APIs](https://docs.databricks.com/dev-tools/api/latest/clusters.html)
+
+```bash
+python export_db.py --profile DEMO --clusters
 ```
-# export the cluster profiles to the demo environment profile in the Databricks CLI
-$ python export_db.py --profile DEMO --clusters
+This will export the following:
+1. Cluster templates
+2. Cluster ACLs / permissions
+3. Instance pool definitions
 
+```bash
+python import_db.py --profile NEW_DEMO --clusters
+```
+
+### Notebooks
+This section uses the [Workspace API](https://docs.databricks.com/dev-tools/api/latest/workspace.html)
+
+This part is a 2 part process. 
+1. Download all notebook locations and paths
+2. Download all notebook contents for every path
+
+```bash
+python export_db.py --profile DEMO --workspace
+python export_db.py --profile DEMO --download
+```
+
+To import into a new workspace:
+```bash
+python import_db.py --profile NEW_DEMO --workspace [--archive-missing]
+```
+If users have left your organization, their artifacts (notebooks / job templates) still exists. However, their user 
+object no longer exists. During the migration, we can keep the old users notebooks into the top level 
+directory `/Archive/{username}@domain.com`
+Use the `--archive-missing` option to put these artifacts in the archive folder. 
+
+**Single User Export/Import**  
+The tool supports exporting single user workspaces using the following command:
+```bash
 # export a single users workspace
-$ python export_db.py --profile DEMO --export-home example@foobar.com
+python export_db.py --profile DEMO --export-home example@foobar.com
 ```
 
-Export help text:
+The corollary is the `--import-home` option:
+```bash
+python import_db.py --profile NEW_DEMO --import-home example@foobar.com
+```
+
+### Jobs
+This section uses the [Jobs API](https://docs.databricks.com/dev-tools/api/latest/jobs.html)
+
+```bash
+python export_db.py --profile DEMO --jobs
+```
+If we're unable to find old cluster ids that are no longer available, we'll reset the job template 
+to use a new default cluster. 
+
+### Hive Metastore
+This section uses an API to remotely run Spark commands on a cluster, this API is called 
+[Execution Context](https://docs.databricks.com/dev-tools/api/1.2/index.html#execution-context)
+
+By default, this will launch an small cluster in the `data/` folder to export the Hive Metastore data. 
+If you need a specific IAM role to export the metastore, use the `--cluster-name` option to connect to 
+a specific cluster. 
+
+By default, we will edit the cluster for every defined IAM role to loop through all failed exports in case the tool was 
+missing IAM permissions. To disable looping through all failed exports, you can pass in `--skip-failed`
+
+```bash
+# export all metastore entries and brute force loop through all instance profiles / IAM roles
+python export_db.py --profile DEMO --metastore
+
+# export all metastore entries on the default cluster without retries
+python export_db.py --profile DEMO --metastore --skip-failed 
+
+# export all metastore entries on a specific cluster
+python export_db.py --profile DEMO --metastore --cluster-name 'Test'
+
+# export all tables within a specific database
+python export_db.py --profile DEMO --metastore --cluster-name 'Test' --database "my_db"
+```
+
+#### Export Help Text
 ```
 $ python export_db.py --help
 usage: export_db.py [-h] [--users] [--workspace] [--download] [--libs]
@@ -90,7 +194,7 @@ optional arguments:
                         Set the base directory to export artifacts
 ```
 
-Import help text:
+#### Import Help Text
 ```
 $ python import_db.py --help
 usage: import_db.py [-h] [--users] [--workspace] [--workspace-acls]
@@ -133,6 +237,13 @@ optional arguments:
                         export dir was a customized
 ```
 
+#### FAQs / Limitations
+**Note**: To disable ssl verification pass the flag `--no-ssl-verification`.
+If still getting SSL Error add the following to your current bash shell -
+```
+export REQUESTS_CA_BUNDLE=""
+export CURL_CA_BUNDLE=""
+```
 
 Limitations:
 * Instance profiles (AWS only): Group access to instance profiles will take precedence. If a user is added to the role directly, and has access via a group, only the group access will be granted during a migration.  
