@@ -14,13 +14,17 @@ def is_azure_creds(creds):
     return False
 
 
+def get_user_list(user_str):
+    user_list = map(lambda x: x.lstrip().rstrip(), user_str.split(','))
+    return list(user_list)
+
+
 def get_login_credentials(creds_path='~/.databrickscfg', profile='DEFAULT'):
     config = configparser.ConfigParser()
     abs_creds_path = path.expanduser(creds_path)
     config.read(abs_creds_path)
-    profile_name = profile.upper()
     try:
-        current_profile = dict(config[profile_name])
+        current_profile = dict(config[profile])
         return current_profile
     except KeyError:
         raise ValueError('Unable to find credentials to load for profile. Profile only supports tokens.')
@@ -29,6 +33,15 @@ def get_login_credentials(creds_path='~/.databrickscfg', profile='DEFAULT'):
 def get_export_user_parser():
     # export workspace items
     parser = argparse.ArgumentParser(description='Export user(s) workspace artifacts from Databricks')
+
+    parser.add_argument('--profile', action='store', default='DEFAULT',
+                        help='Profile to parse the credentials')
+
+    parser.add_argument('--azure', action='store_true', default=False,
+                        help='Run on Azure. (Default is AWS)')
+
+    parser.add_argument('--skip-failed', action='store_true', default=False,
+                        help='Skip retries for any failed hive metastore exports.')
 
     parser.add_argument('--silent', action='store_true', default=False,
                         help='Silent all logging of export operations.')
@@ -42,8 +55,9 @@ def get_export_user_parser():
     parser.add_argument('--set-export-dir', action='store',
                         help='Set the base directory to export artifacts')
 
-    parser.add_argument('--users', action='store_true',
-                        help='Download user(s) artifacts such as notebooks, cluster specs, jobs')
+    parser.add_argument('--users', action='store',
+                        help='Download user(s) artifacts such as notebooks, cluster specs, jobs. '
+                             'Provide a list of user ids / emails to export')
 
     return parser
 
