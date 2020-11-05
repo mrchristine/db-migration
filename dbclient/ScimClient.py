@@ -192,6 +192,15 @@ class ScimClient(dbclient):
         }
         return add_members_args
 
+    @staticmethod
+    def is_user(member_json):
+        # currently a workaround to get whether the member is a user or group
+        # check the ref instead of the type field
+        # once fixed, the type should be `user` or `group` in lowercase
+        if 'Users/' in member_json['$ref']:
+            return True
+        return False
+
     def import_groups(self, group_dir):
         # list all the groups and create groups first
         if not os.path.exists(group_dir):
@@ -215,9 +224,10 @@ class ScimClient(dbclient):
             with open(group_dir + group_name, 'r') as fp:
                 members = json.loads(fp.read()).get('members', None)
                 if members:
+                    # grab a list of ids to add either groups or users to this current group
                     member_id_list = []
                     for m in members:
-                        if m['type'] == 'user':
+                        if self.is_user(m):
                             member_id_list.append(current_user_ids[m['userName']])
                         else:
                             member_id_list.append(current_group_ids[m['display']])
