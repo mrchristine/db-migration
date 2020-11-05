@@ -313,7 +313,7 @@ class WorkspaceClient(ScimClient):
         object_id_with_type = object_acl.get('object_id', None)
         api_path = '/permissions' + object_id_with_type
         acl_list = object_acl.get('access_control_list', None)
-        api_args = {'access_control_list': acl_list}
+        api_args = {'access_control_list': self.build_acl_args(acl_list)}
         resp = self.patch(api_path, api_args)
         print(resp)
         return resp

@@ -137,6 +137,25 @@ class dbclient:
             to_return.append(F(elem))
         return to_return
 
+    @staticmethod
+    def build_acl_args(full_acl_list):
+        """
+        Take the ACL json and return a json that corresponds to the proper input with permission level one level higher
+        { 'acl': [ { (user_name, group_name): {'permission_level': '*'}, ... ] }
+        :param full_acl_list:
+        :return:
+        """
+        acls_list = []
+        for member in full_acl_list:
+            if 'user_name' in member:
+                acls_list.append({'user_name': member.get('user_name'),
+                                  'permission_level': member.get('all_permissions')[0].get('permission_level')})
+            else:
+                if member.get('group_name') != 'admins':
+                    acls_list.append({'group_name': member.get('group_name'),
+                                      'permission_level': member.get('all_permissions')[0].get('permission_level')})
+        return acls_list
+
     def set_export_dir(self, dir_location):
         self._export_dir = dir_location
 

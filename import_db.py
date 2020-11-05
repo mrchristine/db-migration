@@ -80,7 +80,7 @@ def main():
         print("Complete Users and Groups Import Time: " + str(timedelta(seconds=end - start)))
 
     if args.clusters:
-        print("Import the cluster configs at {0}".format(now))
+        print("Import all cluster configs at {0}".format(now))
         cl_c = ClustersClient(client_config)
         if client_config['is_aws']:
             print("Start import of instance profiles ...")
@@ -88,6 +88,11 @@ def main():
             cl_c.import_instance_profiles()
             end = timer()
             print("Complete Instance Profile Import Time: " + str(timedelta(seconds=end - start)))
+        print("Start import of cluster policies ...")
+        start = timer()
+        cl_c.import_cluster_policies()
+        end = timer()
+        print("Complete Cluster Policies Creation Time: " + str(timedelta(seconds=end - start)))
         print("Start import of instance pool configurations ...")
         start = timer()
         cl_c.import_instance_pools()

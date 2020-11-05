@@ -34,6 +34,10 @@ For more details, please look [here](https://github.com/amesar/mlflow-tools/tree
 5. Export job templates
 6. Export Hive Metastore data 
 
+**Note:** During user / group import, users will be notified of the new workspace and account. This is required 
+for them to set up their credentials to access the new workspace. We need the user to exist before loading their 
+artifacts like notebooks, clusters, etc. 
+
 By default, artifacts are stored in the `logs/` directory, and `azure_logs/` for Azure artifacts. 
 This is configurable with the `--set-export-dir` flag to specify the log directory.
 
@@ -143,10 +147,10 @@ python export_db.py --profile DEMO --metastore
 python export_db.py --profile DEMO --metastore --skip-failed 
 
 # export all metastore entries on a specific cluster
-python export_db.py --profile DEMO --metastore --cluster-name 'Test'
+python export_db.py --profile DEMO --metastore --cluster-name "Test"
 
 # export all tables within a specific database
-python export_db.py --profile DEMO --metastore --cluster-name 'Test' --database "my_db"
+python export_db.py --profile DEMO --metastore --cluster-name "Test" --database "my_db"
 ```
 
 #### Export Help Text
