@@ -85,30 +85,75 @@ class ScimClient(dbclient):
                                        "value": roles_list}]}
         return assign_args
 
-    def assign_group_roles(self, group_dir):
+    @staticmethod
+    def assign_entitlements_args(entitlements_list):
+        # roles list passed from file, which is in proper patch arg format already
+        # this method is used to patch the group IAM roles
+        assign_args = {"schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+                       "Operations": [{"op": "add",
+                                       "path": "entitlements",
+                                       "value": entitlements_list}]}
+        return assign_args
+
+    def assign_group_entitlements(self, group_dir):
         # assign group role ACLs, which are only available via SCIM apis
-        group_ids = self.get_group_ids()
+        group_ids = self.get_current_group_ids()
         if not os.path.exists(group_dir):
             print("No groups defined. Skipping group entitlement assignment")
             return
         groups = os.listdir(group_dir)
         for group_name in groups:
             with open(group_dir + group_name, 'r') as fp:
-                roles = json.loads(fp.read()).get('roles', None)
+                group_data = json.loads(fp.read())
+                entitlements = group_data.get('entitlements', None)
+                if entitlements:
+                    g_id = group_ids[group_name]
+                    update_entitlements = self.assign_entitlements_args(entitlements)
+                    up_resp = self.patch(f'/preview/scim/v2/Groups/{g_id}', update_entitlements)
+                    print(up_resp)
+
+    def assign_group_roles(self, group_dir):
+        # assign group role ACLs, which are only available via SCIM apis
+        group_ids = self.get_current_group_ids()
+        if not os.path.exists(group_dir):
+            print("No groups defined. Skipping group entitlement assignment")
+            return
+        groups = os.listdir(group_dir)
+        for group_name in groups:
+            with open(group_dir + group_name, 'r') as fp:
+                group_data = json.loads(fp.read())
+                roles = group_data.get('roles', None)
                 if roles:
                     g_id = group_ids[group_name]
                     update_roles = self.assign_roles_args(roles)
-                    up_resp = self.patch('/preview/scim/v2/Groups/{0}'.format(g_id), update_roles)
+                    up_resp = self.patch(f'/preview/scim/v2/Groups/{g_id}', update_roles)
+                    print(up_resp)
+                entitlements = group_data.get('entitlements', None)
+                if entitlements:
+                    g_id = group_ids[group_name]
+                    update_entitlements = self.assign_entitlements_args(entitlements)
+                    up_resp = self.patch(f'/preview/scim/v2/Groups/{g_id}', update_entitlements)
+                    print(up_resp)
 
-    def get_user_ids(self):
-        # return a dict of username to user id mappings
+    def get_current_user_ids(self):
+        # return a dict of user email to user id mappings
         users = self.get('/preview/scim/v2/Users')['Resources']
         user_id = {}
         for user in users:
-            user_id[user['userName']] = user['id']
+            user_id[user['emails'][0]['value']] = user['id']
         return user_id
 
-    def get_group_ids(self):
+    def get_old_user_emails(self, users_logfile='users.log'):
+        # return a dictionary of { old_id : email } from the users log
+        users_log = self.get_export_dir() + users_logfile
+        email_dict = {}
+        with open(users_log, 'r') as fp:
+            for x in fp:
+                user = json.loads(x)
+                email_dict[user['id']] = user['emails'][0]['value']
+        return email_dict
+
+    def get_current_group_ids(self):
         # return a dict of group displayName and id mappings
         groups = self.get('/preview/scim/v2/Groups').get('Resources', None)
         group_ids = {}
@@ -131,6 +176,29 @@ class ScimClient(dbclient):
             ]
         }
         return patch_roles_arg
+
+    def assign_user_entitlements(self, user_log_file='users.log'):
+        """
+        assign user entitlements to allow cluster create, job create, sql analytics etc
+        :param user_log_file:
+        :return:
+        """
+        user_log = self.get_export_dir() + user_log_file
+        if not os.path.exists(user_log):
+            print("Skipping user entitlement assignment. Logfile does not exist")
+            return
+        user_ids = self.get_user_id_mapping()
+        with open(user_log, 'r') as fp:
+            # loop through each user in the file
+            for line in fp:
+                user = json.loads(line)
+                # add the users entitlements
+                user_entitlements = user.get('entitlements', None)
+                # get the current registered user id
+                user_id = user_ids[user['userName']]
+                if user_entitlements:
+                    entitlements_args = self.assign_entitlements_args(user_entitlements)
+                    update_resp = self.patch(f'/preview/scim/v2/Users/{user_id}', entitlements_args)
 
     def assign_user_roles(self, user_log_file='users.log'):
         """
@@ -174,7 +242,7 @@ class ScimClient(dbclient):
                 if roles_needed:
                     # get the json to add the roles to the user profile
                     patch_roles = self.add_roles_arg(roles_needed)
-                    update_resp = self.patch('/preview/scim/v2/Users/{0}'.format(user_id), patch_roles)
+                    update_resp = self.patch(f'/preview/scim/v2/Users/{user_id}', patch_roles)
 
     @staticmethod
     def get_member_args(member_id_list):
@@ -208,7 +276,7 @@ class ScimClient(dbclient):
             return
         groups = os.listdir(group_dir)
         create_args = {
-            "schemas": [ "urn:ietf:params:scim:schemas:core:2.0:Group" ],
+            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Group"],
             "displayName": "default"
         }
         for x in groups:
@@ -217,9 +285,12 @@ class ScimClient(dbclient):
             create_args['displayName'] = x
             group_resp = self.post('/preview/scim/v2/Groups', create_args)
 
-        # assign membership of users into the groups
-        current_group_ids = self.get_group_ids()
-        current_user_ids = self.get_user_ids()
+        # dict of { group_name : group_id }
+        current_group_ids = self.get_current_group_ids()
+        # dict of { email : current_user_id }
+        current_user_ids = self.get_current_user_ids()
+        # dict of { old_user_id : email }
+        old_user_emails = self.get_old_user_emails()
         for group_name in groups:
             with open(group_dir + group_name, 'r') as fp:
                 members = json.loads(fp.read()).get('members', None)
@@ -227,11 +298,16 @@ class ScimClient(dbclient):
                     # grab a list of ids to add either groups or users to this current group
                     member_id_list = []
                     for m in members:
+                        print(m)
                         if self.is_user(m):
-                            member_id_list.append(current_user_ids[m['userName']])
+                            old_email = old_user_emails[m['value']]
+                            member_id_list.append(current_user_ids[old_email])
                         else:
                             member_id_list.append(current_group_ids[m['display']])
                     add_members_json = self.get_member_args(member_id_list)
+                    # print("DEBUG")
+                    # print("GROUP NAME: ", group_name)
+                    # print(add_members_json)
                     group_id = current_group_ids[group_name]
                     add_resp = self.patch('/preview/scim/v2/Groups/{0}'.format(group_id), add_members_json)
 
@@ -256,8 +332,13 @@ class ScimClient(dbclient):
         self.import_groups(group_dir)
         # assign the users to IAM roles if on AWS
         if self.is_aws():
-            print("Update group role assignment")
+            print("Update group role assignments")
             self.assign_group_roles(group_dir)
-            print("Update user role assignment")
+            print("Update user role assignments")
             self.assign_user_roles(user_log_file)
             print("Done")
+        # need to separate role assignment and entitlements to support Azure
+        print("Updating groups entitlements")
+        self.assign_group_entitlements(group_dir)
+        print("Updating users entitlements")
+        self.assign_user_entitlements(user_log_file)
