@@ -112,6 +112,24 @@ def main():
         end = timer()
         print("Complete Jobs Export Time: " + str(timedelta(seconds=end - start)))
 
+    if args.pause_all_jobs:
+        print("Pause all current jobs {0}".format(now))
+        start = timer()
+        jobs_c = JobsClient(client_config)
+        # log job configs
+        jobs_c.pause_all_jobs()
+        end = timer()
+        print("Paused all jobs time: " + str(timedelta(seconds=end - start)))
+
+    if args.unpause_all_jobs:
+        print("Unpause all current jobs {0}".format(now))
+        start = timer()
+        jobs_c = JobsClient(client_config)
+        # log job configs
+        jobs_c.pause_all_jobs(False)
+        end = timer()
+        print("Unpaused all jobs time: " + str(timedelta(seconds=end - start)))
+
     if args.metastore:
         print("Importing the metastore configs at {0}".format(now))
         start = timer()

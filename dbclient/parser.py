@@ -137,6 +137,12 @@ def get_export_parser():
     parser.add_argument('--set-export-dir', action='store',
                         help='Set the base directory to export artifacts')
 
+    parser.add_argument('--pause-all-jobs', action='store_true',
+                        help='Pause all scheduled jobs')
+
+    parser.add_argument('--unpause-all-jobs', action='store_true',
+                        help='Unpause all scheduled jobs')
+
     return parser
 
 
@@ -203,6 +209,12 @@ def get_import_parser():
 
     parser.add_argument('--set-export-dir', action='store',
                         help='Set the base directory to import artifacts if the export dir was a customized')
+
+    parser.add_argument('--pause-all-jobs', action='store_true',
+                        help='Pause all scheduled jobs')
+
+    parser.add_argument('--unpause-all-jobs', action='store_true',
+                        help='Unpause all scheduled jobs')
     return parser
 
 
