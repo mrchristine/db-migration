@@ -11,17 +11,18 @@ This package uses credentials from the
 
 Support Matrix for Import and Export Operations:
 
-| Component      | Export       | Import       |
-| -------------- | ------------ | ------------ |
-| Users / Groups | Supported    | Supported    |
-| Clusters       | Supported    | Supported    |
-| Notebooks      | Supported    | Supported    |
-| Metastore      | Supported    | Supported    |
-| Jobs           | Supported    | Supported    |
-| Libraries      | Supported    | Unsupported  |
-| Secrets        | Unsupported  | Unsupported  |
-| ML Models      | Unsupported  | Unsupported  |
-| Table ACLs     | Unsupported  | Unsupported  |
+| Component         | Export       | Import       |
+| ----------------- | ------------ | ------------ |
+| Users / Groups    | Supported    | Supported    |
+| Clusters (w/ ACLs)| Supported    | Supported    |
+| Notebooks         | Supported    | Supported    |
+| Notebooks ACLs    | Supported    | Supported    |
+| Metastore         | Supported    | Supported    |
+| Jobs (w/ ACLs)    | Supported    | Supported    |
+| Libraries         | Supported    | Unsupported  |
+| Secrets           | Unsupported  | Unsupported  |
+| ML Models         | Unsupported  | Unsupported  |
+| Table ACLs        | Unsupported  | Unsupported  |
 
 **Note:** MLFlow objects cannot be exported / imported with this tool.
 For more details, please look [here](https://github.com/amesar/mlflow-tools/tree/master/mlflow_tools/export_import)
@@ -72,15 +73,15 @@ artifacts into separate logging directories.
 
 
 ### Clusters
-The section uses the [Clusters APIs](https://docs.databricks.com/dev-tools/api/latest/clusters.html)
+The section uses the [Clusters APIs](https://docs.databricks.com/dev-tools/api/latest/clusters.html)  
 
 ```bash
 python export_db.py --profile DEMO --clusters
 ```
 This will export the following:
-1. Cluster templates
-2. Cluster ACLs / permissions
-3. Instance pool definitions
+1. Cluster templates + ACLs
+2. Instance pool definitions
+3. Cluster policies + ACLs
 
 ```bash
 python import_db.py --profile NEW_DEMO --clusters
@@ -89,13 +90,15 @@ python import_db.py --profile NEW_DEMO --clusters
 ### Notebooks
 This section uses the [Workspace API](https://docs.databricks.com/dev-tools/api/latest/workspace.html)
 
-This part is a 2 part process. 
+This part is a 3 part process. 
 1. Download all notebook locations and paths
 2. Download all notebook contents for every path
+3. Download all workspace ACLs
 
 ```bash
 python export_db.py --profile DEMO --workspace
 python export_db.py --profile DEMO --download
+python export_db.py --profile DEMO --workspace-acls
 ```
 
 To import into a new workspace:
@@ -120,7 +123,8 @@ python import_db.py --profile NEW_DEMO --import-home example@foobar.com
 ```
 
 ### Jobs
-This section uses the [Jobs API](https://docs.databricks.com/dev-tools/api/latest/jobs.html)
+This section uses the [Jobs API](https://docs.databricks.com/dev-tools/api/latest/jobs.html)  
+Job ACLs are exported and imported with this option.
 
 ```bash
 python export_db.py --profile DEMO --jobs

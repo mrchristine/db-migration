@@ -264,6 +264,11 @@ class WorkspaceClient(ScimClient):
                             self.log_all_workspace_items(ws_path=dir_path, workspace_log_file=workspace_log_file,
                                                          libs_log_file=libs_log_file)
 
+    def get_obj_id_by_path(self, path):
+        resp = self.get(WS_STATUS, {'path': path})
+        obj_id = resp.get('object_id', None)
+        return obj_id
+
     def log_acl_to_file(self, artifact_type, read_log_filename, write_log_filename):
         """
         generic function to log the notebook/directory ACLs to specific file names
@@ -274,10 +279,12 @@ class WorkspaceClient(ScimClient):
         read_log_path = self.get_export_dir() + read_log_filename
         write_log_path = self.get_export_dir() + write_log_filename
         with open(read_log_path, 'r') as read_fp, open(write_log_path, 'w') as write_fp:
-            for notebook in read_fp:
-                obj_id = json.loads(notebook).get('object_id', None)
+            for x in read_fp:
+                data = json.loads(x)
+                obj_id = data.get('object_id', None)
                 api_endpoint = '/permissions/{0}/{1}'.format(artifact_type, obj_id)
                 acl_resp = self.get(api_endpoint)
+                acl_resp['path'] = data.get('path')
                 acl_resp.pop('http_status_code')
                 write_fp.write(json.dumps(acl_resp) + '\n')
 
@@ -310,7 +317,14 @@ class WorkspaceClient(ScimClient):
         """
         object_acl = json.loads(acl_str)
         # the object_type
-        object_id_with_type = object_acl.get('object_id', None)
+        object_type = object_acl.get('object_type', None)
+        obj_id = self.get(WS_STATUS, {'path': object_acl['path']}).get('object_id', None)
+        if object_type == 'directory':
+            object_id_with_type = f'/directories/{obj_id}'
+        elif object_type == 'notebook':
+            object_id_with_type = f'/notebooks/{obj_id}'
+        else:
+            raise ValueError('Object for Workspace ACLs is Undefined')
         api_path = '/permissions' + object_id_with_type
         acl_list = object_acl.get('access_control_list', None)
         api_args = {'access_control_list': self.build_acl_args(acl_list)}
