@@ -197,7 +197,7 @@ optional arguments:
   --database DATABASE   Database name to export for the metastore. Single
                         database name supported
   --iam IAM             IAM Instance Profile to export metastore entires
-  --skip-failed         Skip retries for any failed exports.
+  --skip-failed         Skip retries for any failed hive metastore exports.
   --mounts              Log all mount points.
   --azure               Run on Azure. (Default is AWS)
   --profile PROFILE     Profile to parse the credentials
@@ -211,6 +211,13 @@ optional arguments:
   --debug               Enable debug logging
   --set-export-dir SET_EXPORT_DIR
                         Set the base directory to export artifacts
+  --pause-all-jobs      Pause all scheduled jobs
+  --unpause-all-jobs    Unpause all scheduled jobs
+  --update-account-id UPDATE_ACCOUNT_ID
+                        Set the account id for instance profiles to a new
+                        account id
+  --old-account-id OLD_ACCOUNT_ID
+                        Old account ID to filter on
 ```
 
 #### Import Help Text
@@ -244,7 +251,8 @@ optional arguments:
   --cluster-name CLUSTER_NAME
                         Cluster name to import the metastore to a specific
                         cluster. Cluster will be started.
-  --skip-failed         Skip missing users that do not exist
+  --skip-failed         Skip missing users that do not exist when importing
+                        user notebooks
   --azure               Run on Azure. (Default is AWS)
   --profile PROFILE     Profile to parse the credentials
   --no-ssl-verification
@@ -254,6 +262,8 @@ optional arguments:
   --set-export-dir SET_EXPORT_DIR
                         Set the base directory to import artifacts if the
                         export dir was a customized
+  --pause-all-jobs      Pause all scheduled jobs
+  --unpause-all-jobs    Unpause all scheduled jobs
 ```
 
 #### FAQs / Limitations
