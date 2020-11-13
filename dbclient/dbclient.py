@@ -1,6 +1,7 @@
 import json
 import os
 import requests
+import fileinput
 import requests.packages.urllib3
 
 global pprint_j
@@ -169,3 +170,32 @@ class dbclient:
             img_type = x['key'].split('-')[1][0:5]
             if img_type == 'scala':
                 return x
+
+    def update_account_id(self, new_aws_account_id, old_account_id):
+        log_dir = self.get_export_dir()
+        logs_to_update = ['users.log',
+                          'instance_profiles.log', 'clusters.log', 'cluster_policies.log',
+                          'jobs.log']
+        # update individual logs first
+        for log in logs_to_update:
+            filename = log_dir + log
+            with fileinput.FileInput(filename, inplace=True, backup='.bak') as fp:
+                for line in fp:
+                    print(line.replace(old_account_id, new_aws_account_id), end='')
+        # # update group logs
+        group_dir = log_dir + 'groups/'
+        groups = os.listdir(group_dir)
+        for group_name in groups:
+            group_file = log_dir + 'groups/' + group_name
+            with fileinput.FileInput(group_file, inplace=True, backup='.bak') as fp:
+                for line in fp:
+                    print(line.replace(old_account_id, new_aws_account_id), end='')
+        # cleanup all backup files
+        for log in logs_to_update:
+            f_backup = log_dir + log + '.bak'
+            os.remove(f_backup)
+        for group_name in groups:
+            group_file_backup = log_dir + 'groups/' + group_name + '.bak'
+            os.remove(group_file_backup)
+
+

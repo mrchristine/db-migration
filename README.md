@@ -7,7 +7,7 @@ to move between different cloud providers, or to move to different regions / acc
 Packaged is based on python 3.6 and DBR 6.x and 7.x releases.
 
 This package uses credentials from the 
-[Databricks CLI](https://docs.databricks.com/user-guide/dev-tools/databricks-cli.html)
+[Databricks CLI](https://docs.databricks.com/user-guide/dev-tools/databricks-cli.html)  
 
 Support Matrix for Import and Export Operations:
 
@@ -26,6 +26,17 @@ Support Matrix for Import and Export Operations:
 
 **Note:** MLFlow objects cannot be exported / imported with this tool.
 For more details, please look [here](https://github.com/amesar/mlflow-tools/tree/master/mlflow_tools/export_import)
+
+## Workspace Analysis
+Import this [notebook](data/workspace_migration_analysis.py) to do an analysis of the number of objects within the 
+current workspace. The last cell will print:
+1. Number of users
+2. Number of groups
+3. Approximate number of notebooks
+4. Number of internal jobs defined
+5. Number of external jobs executed (from external API invocations)
+6. Number of databases
+7. Number of tables 
 
 ## Order of Operations
 1. Export users and groups 

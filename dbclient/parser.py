@@ -143,6 +143,12 @@ def get_export_parser():
     parser.add_argument('--unpause-all-jobs', action='store_true',
                         help='Unpause all scheduled jobs')
 
+    parser.add_argument('--update-account-id', action='store',
+                        help='Set the account id for instance profiles to a new account id')
+
+    parser.add_argument('--old-account-id', action='store',
+                        help='Old account ID to filter on')
+
     return parser
 
 
