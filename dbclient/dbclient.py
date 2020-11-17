@@ -138,23 +138,44 @@ class dbclient:
             to_return.append(F(elem))
         return to_return
 
-    @staticmethod
-    def build_acl_args(full_acl_list):
+    def whoami(self):
+        """
+        get current user userName from SCIM API
+        :return: username string
+        """
+        user_name = self.get('/preview/scim/v2/Me').get('userName')
+        return user_name
+
+    def build_acl_args(self, full_acl_list, is_jobs=False):
         """
         Take the ACL json and return a json that corresponds to the proper input with permission level one level higher
         { 'acl': [ { (user_name, group_name): {'permission_level': '*'}, ... ] }
+        for job ACLs, we need to reset the OWNER, so set the admin as CAN_MANAGE instead
         :param full_acl_list:
         :return:
         """
         acls_list = []
+        current_owner = ''
         for member in full_acl_list:
+            permissions = member.get('all_permissions')[0].get('permission_level')
             if 'user_name' in member:
                 acls_list.append({'user_name': member.get('user_name'),
-                                  'permission_level': member.get('all_permissions')[0].get('permission_level')})
+                                  'permission_level': permissions})
+                if permissions == 'IS_OWNER':
+                    current_owner = member.get('user_name')
             else:
                 if member.get('group_name') != 'admins':
                     acls_list.append({'group_name': member.get('group_name'),
-                                      'permission_level': member.get('all_permissions')[0].get('permission_level')})
+                                      'permission_level': permissions})
+                    if permissions == 'IS_OWNER':
+                        current_owner = member.get('group_name')
+
+        if is_jobs:
+            me = self.whoami()
+            if current_owner != me:
+                update_admin = {'user_name': self.whoami(),
+                                'permission_level': 'CAN_MANAGE'}
+                acls_list.append(update_admin)
         return acls_list
 
     def set_export_dir(self, dir_location):
