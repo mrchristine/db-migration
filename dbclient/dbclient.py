@@ -184,6 +184,9 @@ class dbclient:
     def get_export_dir(self):
         return self._export_dir
 
+    def get_url(self):
+        return self._url
+
     def get_latest_spark_version(self):
         versions = self.get('/clusters/spark-versions')['versions']
         v_sorted = sorted(versions, key=lambda i: i['key'], reverse=True)

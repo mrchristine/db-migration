@@ -115,7 +115,7 @@ class JobsClient(dbclient):
                 update_job_resp = self.post('/jobs/reset', update_job_conf)
 
     def delete_all_jobs(self):
-        job_list = self.get('/jobs/list').get('jobs', None)
+        job_list = self.get('/jobs/list').get('jobs', [])
         for job in job_list:
             self.post('/jobs/delete', {'job_id': job['job_id']})
 

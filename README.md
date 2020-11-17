@@ -264,6 +264,7 @@ optional arguments:
                         export dir was a customized
   --pause-all-jobs      Pause all scheduled jobs
   --unpause-all-jobs    Unpause all scheduled jobs
+  --delete-all-jobs     Delete all jobs
 ```
 
 #### FAQs / Limitations
