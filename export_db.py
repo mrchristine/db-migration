@@ -173,6 +173,14 @@ def main():
         end = timer()
         print("Complete account id update time: " + str(timedelta(seconds=end - start)))
 
+    if args.replace_old_email and args.update_new_email:
+        print("Updating old email to new email address at {0}".format(now))
+        start = timer()
+        client = dbclient(client_config)
+        client.update_email_addresses(args.replace_old_email, args.update_new_email)
+        end = timer()
+        print("Complete email update time: " + str(timedelta(seconds=end - start)))
+
 
 if __name__ == '__main__':
     main()

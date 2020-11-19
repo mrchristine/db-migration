@@ -178,6 +178,9 @@ usage: export_db.py [-h] [--users] [--workspace] [--download] [--libs]
                     [--profile PROFILE] [--export-home EXPORT_HOME]
                     [--workspace-acls] [--silent] [--no-ssl-verification]
                     [--debug] [--set-export-dir SET_EXPORT_DIR]
+                    [--pause-all-jobs] [--unpause-all-jobs]
+                    [--update-account-id UPDATE_ACCOUNT_ID]
+                    [--old-account-id OLD_ACCOUNT_ID]
 
 Export full workspace artifacts from Databricks
 
@@ -218,6 +221,10 @@ optional arguments:
                         account id
   --old-account-id OLD_ACCOUNT_ID
                         Old account ID to filter on
+  --replace-old-email REPLACE_OLD_EMAIL
+                        Old email address to update from logs
+  --update-new-email UPDATE_NEW_EMAIL
+                        New email address to replace the logs
 ```
 
 #### Import Help Text
@@ -229,6 +236,8 @@ usage: import_db.py [-h] [--users] [--workspace] [--workspace-acls]
                     [--cluster-name CLUSTER_NAME] [--skip-failed] [--azure]
                     [--profile PROFILE] [--no-ssl-verification] [--silent]
                     [--debug] [--set-export-dir SET_EXPORT_DIR]
+                    [--pause-all-jobs] [--unpause-all-jobs]
+                    [--delete-all-jobs]
 
 Import full workspace artifacts into Databricks
 
@@ -276,10 +285,15 @@ export CURL_CA_BUNDLE=""
 ```
 
 Limitations:
-* Instance profiles (AWS only): Group access to instance profiles will take precedence. If a user is added to the role directly, and has access via a group, only the group access will be granted during a migration.  
-* Clusters: Cluster creator will be seen as the single admin user who migrated all the clusters. (Relevant for billing purposes)
-  * Cluster creator tags cannot be updated. Added a custom tag with the original cluster creator for DBU tracking. 
-* Jobs: Job owners will be seen as the single admin user who migrate the job configurations. (Relevant for billing purposes)
+* Instance profiles (AWS only): Group access to instance profiles will take precedence. If a user is added to the role 
+directly, and has access via a group, only the group access will be granted during a migration.  
+* Clusters: Cluster creator will be seen as the single admin user who migrated all the clusters. (Relevant for billing 
+purposes)
+  * Cluster creator tags cannot be updated. Added a custom tag named `OriginalCreator` with the original cluster creator
+   for DBU tracking.
+* Jobs: Job owners will be seen as the single admin user who migrate the job configurations. (Relevant for billing 
+purposes)
   * Jobs with existing clusters that no longer exist will be reset to the default cluster type
-  * Jobs with older legacy instances will fail with unsupported DBR or instance types. See release notes for the latest supported releases. 
+  * Jobs with older legacy instances will fail with unsupported DBR or instance types. See release notes for the latest
+   supported releases. 
 

@@ -149,6 +149,12 @@ def get_export_parser():
     parser.add_argument('--old-account-id', action='store',
                         help='Old account ID to filter on')
 
+    parser.add_argument('--replace-old-email', action='store',
+                        help='Old email address to update from logs')
+
+    parser.add_argument('--update-new-email', action='store',
+                        help='New email address to replace the logs')
+
     return parser
 
 
