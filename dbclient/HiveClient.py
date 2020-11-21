@@ -27,7 +27,7 @@ class HiveClient(ClustersClient):
         else:
             with open(local_table_path, "r") as fp:
                 ddl_statement = fp.read()
-                spark_ddl_statement = self.get_spark_ddl
+                spark_ddl_statement = self.get_spark_ddl(ddl_statement)
                 ddl_results = self.submit_command(cid, ec_id, spark_ddl_statement)
                 return ddl_results
 
@@ -216,6 +216,7 @@ class HiveClient(ClustersClient):
                 err_log.write(json.dumps(len_resp) + '\n')
                 return -1
             # if the len is over 2k chars then export to file
+            table_ddl_path = self.get_export_dir() + metastore_dir + db_name + '/' + table_name
             if ddl_len > 2048:
                 # create the dbfs tmp path for exports / imports. no-op if exists
                 resp = self.post('/dbfs/mkdirs', {'path': '/tmp/migration/'})
@@ -225,12 +226,12 @@ class HiveClient(ClustersClient):
                 # read that data using the dbfs rest endpoint which can handle 2MB of text easily
                 read_args = {'path': '/tmp/migration/tmp_export_ddl.txt'}
                 read_resp = self.get('/dbfs/read', read_args)
-                with open(self.get_export_dir() + metastore_dir + db_name + '/' + table_name, "w") as fp:
+                with open(table_ddl_path, "w") as fp:
                     fp.write(base64.b64decode(read_resp.get('data')).decode('utf-8'))
             else:
                 export_ddl_cmd = 'print(ddl_str)'
                 ddl_resp = self.submit_command(cid, ec_id, export_ddl_cmd)
-                with open(self.get_export_dir() + metastore_dir + db_name + '/' + table_name, "w") as fp:
+                with open(table_ddl_path, "w") as fp:
                     fp.write(ddl_resp.get('data'))
                 return 0
 
