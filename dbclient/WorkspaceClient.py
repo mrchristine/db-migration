@@ -90,14 +90,18 @@ class WorkspaceClient(ScimClient):
         """
         Export the provided user's home directory
         :param username: user's home directory to export
+        :param local_export_dir: folder location to do single user exports
         :return: None
         """
+        original_export_dir = self.get_export_dir()
         user_export_dir = self.get_export_dir() + local_export_dir
         user_root = '/Users/' + username.rstrip().lstrip()
         self.set_export_dir(user_export_dir + '/{0}/'.format(username))
         print("Export path: {0}".format(self.get_export_dir()))
         self.log_all_workspace_items(ws_path=user_root)
         self.download_notebooks(ws_dir='user_artifacts/')
+        # reset the original export dir for other calls to this method using the same client
+        self.set_export_dir(original_export_dir)
 
     def import_user_home(self, username, local_export_dir):
         """
@@ -107,6 +111,7 @@ class WorkspaceClient(ScimClient):
         :param username: user's home directory to export
         :return: None
         """
+        original_export_dir = self.get_export_dir()
         user_import_dir = self.get_export_dir() + local_export_dir
         if self.does_user_exist(username):
             print("Yes, we can upload since the user exists")
@@ -138,6 +143,7 @@ class WorkspaceClient(ScimClient):
                 resp_upload = self.post(WS_IMPORT, nb_input_args)
                 if self.is_verbose():
                     print(resp_upload)
+        self.set_export_dir(original_export_dir)
 
     def download_notebooks(self, ws_log_file='user_workspace.log', ws_dir='artifacts/'):
         """

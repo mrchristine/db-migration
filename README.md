@@ -170,6 +170,19 @@ python export_db.py --profile DEMO --metastore --cluster-name "Test"
 python export_db.py --profile DEMO --metastore --cluster-name "Test" --database "my_db"
 ```
 
+### Export Groups by Name
+This functionality exports group(s), their members, and corresponding notebooks.  
+This assumes an empty export directory to simplify the number of operations needed.  
+This does **not** include IAM roles as those likely change while moving across workspaces. 
+
+```bash
+# reset the export directory and export a set of groups
+python export_db.py --reset-export && python export_db.py --profile SRC --export-groups 'groupA,groupB'
+
+# import the groups that were exported
+python import_db.py --profile DST --import-groups
+```
+
 #### Export Help Text
 ```
 $ python export_db.py --help
@@ -209,11 +222,15 @@ optional arguments:
   --export-home EXPORT_HOME
                         User workspace name to export, typically the users
                         email address
+  --export-groups EXPORT_GROUPS
+                        Group names to export as a set. Includes group, users,
+                        and notebooks.
   --workspace-acls      Permissions for workspace objects to export
   --silent              Silent all logging of export operations.
   --no-ssl-verification
                         Set Verify=False when making http requests.
   --debug               Enable debug logging
+  --reset-exports       Clear export directory
   --set-export-dir SET_EXPORT_DIR
                         Set the base directory to export artifacts
   --pause-all-jobs      Pause all scheduled jobs
@@ -252,6 +269,8 @@ optional arguments:
   --import-home IMPORT_HOME
                         User workspace name to import, typically the users
                         email address
+  --import-groups       Groups to import into a new workspace. Includes group
+                        creation and user notebooks.
   --archive-missing     Import all missing users into the top level /Archive/
                         directory.
   --libs                Import all the libs from the logfile into the

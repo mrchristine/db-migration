@@ -2,6 +2,7 @@ from dbclient import *
 from timeit import default_timer as timer
 from datetime import timedelta, datetime
 from os import makedirs
+import shutil
 
 
 # python 3.6
@@ -35,6 +36,20 @@ def main():
         start = timer()
         # log notebooks and libraries
         ws_c.export_user_home(username, 'user_exports')
+        end = timer()
+        print("Complete User Export Time: " + str(timedelta(seconds=end - start)))
+
+    if args.export_groups:
+        group_name_list = convert_args_to_list(args.export_groups)
+        print("Exporting Groups: {0}".format(group_name_list))
+        start = timer()
+        scim_c = ScimClient(client_config)
+        # log notebooks and libraries
+        user_names = scim_c.log_groups_from_list(group_name_list)
+        print('Export users notebooks:', user_names)
+        ws_c = WorkspaceClient(client_config)
+        for username in user_names:
+            ws_c.export_user_home(username, 'user_exports')
         end = timer()
         print("Complete User Export Time: " + str(timedelta(seconds=end - start)))
 
@@ -180,6 +195,22 @@ def main():
         client.update_email_addresses(args.replace_old_email, args.update_new_email)
         end = timer()
         print("Complete email update time: " + str(timedelta(seconds=end - start)))
+
+    if args.reset_exports:
+        print('Request to clean up old export directory')
+        start = timer()
+        client = dbclient(client_config)
+        export_dir = client.get_export_dir()
+        response = prompt_for_input(f'\nPlease confirm that you would like to delete all the logs from {export_dir}'
+                                    f' [yes/no]:')
+        if response:
+            print('Deleting old export directory and logs ...')
+            try:
+                shutil.rmtree(export_dir)
+            except OSError as e:
+                print("Error: %s - %s." % (e.filename, e.strerror))
+        end = timer()
+        print("Completed cleanup: " + str(timedelta(seconds=end - start)))
 
 
 if __name__ == '__main__':

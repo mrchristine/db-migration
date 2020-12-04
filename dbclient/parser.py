@@ -14,9 +14,9 @@ def is_azure_creds(creds):
     return False
 
 
-def get_user_list(user_str):
-    user_list = map(lambda x: x.lstrip().rstrip(), user_str.split(','))
-    return list(user_list)
+def convert_args_to_list(arg_str):
+    arg_list = map(lambda x: x.lstrip().rstrip(), arg_str.split(','))
+    return list(arg_list)
 
 
 def get_login_credentials(creds_path='~/.databrickscfg', profile='DEFAULT'):
@@ -122,6 +122,9 @@ def get_export_parser():
     parser.add_argument('--export-home', action='store',
                         help='User workspace name to export, typically the users email address')
 
+    parser.add_argument('--export-groups', action='store',
+                        help='Group names to export as a set. Includes group, users, and notebooks.')
+
     parser.add_argument('--workspace-acls', action='store_true',
                         help='Permissions for workspace objects to export')
 
@@ -133,6 +136,9 @@ def get_export_parser():
 
     parser.add_argument('--debug', action='store_true',
                         help='Enable debug logging')
+
+    parser.add_argument('--reset-exports', action='store_true',
+                        help='Clear export directory')
 
     parser.add_argument('--set-export-dir', action='store',
                         help='Set the base directory to export artifacts')
@@ -175,6 +181,9 @@ def get_import_parser():
 
     parser.add_argument('--import-home', action='store',
                         help='User workspace name to import, typically the users email address')
+
+    parser.add_argument('--import-groups', action='store_true',
+                        help='Groups to import into a new workspace. Includes group creation and user notebooks.')
 
     # import all notebooks
     parser.add_argument('--archive-missing', action='store_true',
