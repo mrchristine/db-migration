@@ -155,12 +155,12 @@ def main():
         end = timer()
         print("Delete all jobs time: " + str(timedelta(seconds=end - start)))
 
-    if args.metastore:
+    if args.metastore or args.metastore_unicode:
         print("Importing the metastore configs at {0}".format(now))
         start = timer()
         hive_c = HiveClient(client_config)
         # log job configs
-        hive_c.import_hive_metastore(cluster_name=args.cluster_name)
+        hive_c.import_hive_metastore(cluster_name=args.cluster_name, has_unicode=args.metastore_unicode)
         end = timer()
         print("Complete Metastore Import Time: " + str(timedelta(seconds=end - start)))
 

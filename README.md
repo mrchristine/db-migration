@@ -209,6 +209,8 @@ optional arguments:
   --clusters            Log all the clusters for the environment
   --jobs                Log all the job configs for the environment
   --metastore           log all the metastore table definitions
+  --metastore-unicode   log all the metastore table definitions including
+                        unicode characters
   --cluster-name CLUSTER_NAME
                         Cluster name to export the metastore to a specific
                         cluster. Cluster will be started.
@@ -278,6 +280,8 @@ optional arguments:
   --clusters            Import all the cluster configs for the environment
   --jobs                Import all job configurations to the environment.
   --metastore           Import the metastore to the workspace.
+  --metastore-unicode   Import all the metastore table definitions with
+                        unicode characters
   --cluster-name CLUSTER_NAME
                         Cluster name to import the metastore to a specific
                         cluster. Cluster will be started.

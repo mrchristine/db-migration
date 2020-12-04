@@ -93,6 +93,10 @@ def get_export_parser():
     parser.add_argument('--metastore', action='store_true',
                         help='log all the metastore table definitions')
 
+    # get all metastore
+    parser.add_argument('--metastore-unicode', action='store_true',
+                        help='log all the metastore table definitions including unicode characters')
+
     # cluster name used to export the metastore
     parser.add_argument('--cluster-name', action='store',
                         help='Cluster name to export the metastore to a specific cluster. Cluster will be started.')
@@ -204,6 +208,10 @@ def get_import_parser():
     # import all metastore
     parser.add_argument('--metastore', action='store_true',
                         help='Import the metastore to the workspace.')
+
+    # get all metastore
+    parser.add_argument('--metastore-unicode', action='store_true',
+                        help='Import all the metastore table definitions with unicode characters')
 
     # cluster name used to import the metastore
     parser.add_argument('--cluster-name', action='store',
