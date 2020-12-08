@@ -98,8 +98,9 @@ class WorkspaceClient(ScimClient):
         user_root = '/Users/' + username.rstrip().lstrip()
         self.set_export_dir(user_export_dir + '/{0}/'.format(username))
         print("Export path: {0}".format(self.get_export_dir()))
-        self.log_all_workspace_items(ws_path=user_root)
-        self.download_notebooks(ws_dir='user_artifacts/')
+        item_count = self.log_all_workspace_items(ws_path=user_root)
+        if item_count > 0:
+            self.download_notebooks(ws_dir='user_artifacts/')
         # reset the original export dir for other calls to this method using the same client
         self.set_export_dir(original_export_dir)
 
@@ -244,10 +245,10 @@ class WorkspaceClient(ScimClient):
 
         if not os.path.exists(self.get_export_dir()):
             os.makedirs(self.get_export_dir(), exist_ok=True)
-        items = self.get(WS_LIST, get_args).get('objects', None)
+        items = self.get(WS_LIST, get_args).get('objects', [])
         if self.is_verbose():
             print("Listing: {0}".format(get_args['path']))
-        if items is not None:
+        if items:
             # list all the users folders only
             folders = self.filter_workspace_items(items, 'DIRECTORY')
             # should be no notebooks, but lets filter and can check later
@@ -269,6 +270,8 @@ class WorkspaceClient(ScimClient):
                             dir_fp.write(json.dumps(f) + '\n')
                             self.log_all_workspace_items(ws_path=dir_path, workspace_log_file=workspace_log_file,
                                                          libs_log_file=libs_log_file)
+
+        return len(items)
 
     def get_obj_id_by_path(self, path):
         resp = self.get(WS_STATUS, {'path': path})
