@@ -71,6 +71,13 @@ class ScimClient(dbclient):
             with open(group_dir + group_name, "w") as fp:
                 fp.write(json.dumps(self.add_username_to_group(x)))
 
+    @staticmethod
+    def build_group_dict(group_list):
+        group_dict = {}
+        for group in group_list:
+            group_dict[group.get('displayName')] = group
+        return group_dict
+
     def log_groups_from_list(self, group_name_list, group_log_dir='groups/', users_logfile='users.log'):
         """
         take a list of groups and log all the members
@@ -82,14 +89,20 @@ class ScimClient(dbclient):
         group_dir = self.get_export_dir() + group_log_dir
         os.makedirs(group_dir, exist_ok=True)
         group_list = self.get("/preview/scim/v2/Groups").get('Resources', [])
+        group_dict = self.build_group_dict(group_list)
         member_id_list = []
-        for x in group_list:
-            group_name = x['displayName']
-            if group_name in group_name_list:
-                member_id_list.extend(list(map(lambda y: y['value'], x.get('members', []))))
-                with open(group_dir + group_name, "w") as fp:
-                    x.pop('roles', None)  # removing the roles field from the groups arg
-                    fp.write(json.dumps(self.add_username_to_group(x)))
+        for group_name in group_name_list:
+            group_details = group_dict[group_name]
+            members_list = group_details.get('members', [])
+            filtered_users = list(filter(lambda y: 'Users' in y.get('$ref', None), members_list))
+            filtered_sub_groups = list(filter(lambda y: 'Groups' in y.get('$ref', None), members_list))
+            if filtered_sub_groups:
+                sub_group_names = list(map(lambda z: z.get('display'), filtered_sub_groups))
+                group_name_list.extend(sub_group_names)
+            member_id_list.extend(list(map(lambda y: y['value'], filtered_users)))
+            with open(group_dir + group_name, "w") as fp:
+                group_details.pop('roles', None)  # removing the roles field from the groups arg
+                fp.write(json.dumps(self.add_username_to_group(group_details)))
         users_log = self.get_export_dir() + users_logfile
         user_names_list = []
         with open(users_log, 'w') as u_fp:

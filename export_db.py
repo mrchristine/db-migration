@@ -49,7 +49,9 @@ def main():
         print('Export users notebooks:', user_names)
         ws_c = WorkspaceClient(client_config)
         for username in user_names:
-            ws_c.export_user_home(username, 'user_exports')
+            is_user_home_empty = ws_c.is_user_home_empty(username)
+            if not is_user_home_empty:
+                ws_c.export_user_home(username, 'user_exports')
         end = timer()
         print("Complete User Export Time: " + str(timedelta(seconds=end - start)))
 

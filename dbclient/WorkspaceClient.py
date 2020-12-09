@@ -71,6 +71,19 @@ class WorkspaceClient(ScimClient):
                 return True
         return False
 
+    def is_user_home_empty(self, username):
+        user_root = '/Users/' + username.rstrip().lstrip()
+        get_args = {'path': user_root}
+        items = self.get(WS_LIST, get_args).get('objects', None)
+        if items:
+            folders = self.filter_workspace_items(items, 'DIRECTORY')
+            notebooks = self.filter_workspace_items(items, 'NOTEBOOK')
+            # if both notebooks and directories are empty, return true
+            if not folders and not notebooks:
+                return True
+            return False
+        return True
+
     @staticmethod
     def get_num_of_saved_users(export_dir):
         """
