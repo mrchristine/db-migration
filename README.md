@@ -186,8 +186,9 @@ python import_db.py --profile DST --import-groups
 #### Export Help Text
 ```
 $ python export_db.py --help
-usage: export_db.py [-h] [--users] [--workspace] [--download] [--libs]
-                    [--clusters] [--jobs] [--metastore]
+usage: export_db.py [-h] [--users] [--workspace]
+                    [--notebook-format {DBC,SOURCE,HTML}] [--download]
+                    [--libs] [--clusters] [--jobs] [--metastore]
                     [--cluster-name CLUSTER_NAME] [--database DATABASE]
                     [--iam IAM] [--skip-failed] [--mounts] [--azure]
                     [--profile PROFILE] [--export-home EXPORT_HOME]
@@ -204,6 +205,9 @@ optional arguments:
   --users               Download all the users and groups in the workspace
   --workspace           Log all the notebook paths in the workspace. (metadata
                         only)
+  --notebook-format {DBC,SOURCE,HTML}
+                        Choose the file format to download the notebooks
+                        (default: DBC)
   --download            Download all notebooks for the environment
   --libs                Log all the libs for the environment
   --clusters            Log all the clusters for the environment
@@ -252,6 +256,7 @@ optional arguments:
 ```
 $ python import_db.py --help
 usage: import_db.py [-h] [--users] [--workspace] [--workspace-acls]
+                    [--notebook-format {DBC,SOURCE,HTML}]
                     [--import-home IMPORT_HOME] [--archive-missing] [--libs]
                     [--clusters] [--jobs] [--metastore]
                     [--cluster-name CLUSTER_NAME] [--skip-failed] [--azure]
@@ -267,6 +272,9 @@ optional arguments:
   --users               Import all the users and groups from the logfile.
   --workspace           Import all notebooks from export dir into the
                         workspace.
+  --notebook-format {DBC,SOURCE,HTML}
+                        Choose the file format of the notebook to import
+                        (default: DBC)
   --workspace-acls      Permissions for workspace objects to import
   --import-home IMPORT_HOME
                         User workspace name to import, typically the users

@@ -1,11 +1,23 @@
 import argparse
 import configparser
 import re
+from enum import Enum
 from os import path
 
 auth_key = ['host',
             'username',
             'token']
+
+
+class NotebookFormat(Enum):
+    dbc = 'DBC'
+    source = 'SOURCE'
+    html = 'HTML'
+    # jupyter is only supported for python notebooks. consider adding this back if there's demand
+    # jupyter = 'JUPYTER'
+
+    def __str__(self):
+        return self.value
 
 
 def is_azure_creds(creds):
@@ -73,6 +85,10 @@ def get_export_parser():
     # log all user workspace paths
     parser.add_argument('--workspace', action='store_true',
                         help='Log all the notebook paths in the workspace. (metadata only)')
+
+    parser.add_argument('--notebook-format', type=NotebookFormat,
+                        choices=list(NotebookFormat), default=NotebookFormat.dbc,
+                        help='Choose the file format to download the notebooks (default: DBC)')
 
     # download all user workspace notebooks
     parser.add_argument('--download', action='store_true',
@@ -183,6 +199,10 @@ def get_import_parser():
     parser.add_argument('--workspace-acls', action='store_true',
                         help='Permissions for workspace objects to import')
 
+    parser.add_argument('--notebook-format', type=NotebookFormat,
+                        choices=list(NotebookFormat), default=NotebookFormat.dbc,
+                        help='Choose the file format of the notebook to import (default: DBC)')
+
     parser.add_argument('--import-home', action='store',
                         help='User workspace name to import, typically the users email address')
 
@@ -286,7 +306,8 @@ def build_client_config(url, token, args):
               'verbose': (not args.silent),
               'verify_ssl': (not args.no_ssl_verification),
               'skip_failed': args.skip_failed,
-              'debug': args.debug
+              'debug': args.debug,
+              'file_format': str(args.notebook_format)
               }
     if args.set_export_dir:
         if args.set_export_dir.rstrip()[-1] != '/':

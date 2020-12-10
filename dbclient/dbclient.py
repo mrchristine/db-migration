@@ -29,6 +29,7 @@ class dbclient:
         self._skip_failed = configs['skip_failed']
         self._is_verbose = configs['verbose']
         self._verify_ssl = configs['verify_ssl']
+        self._file_format = configs['file_format']
         if self._verify_ssl:
             # set these env variables if skip SSL verification is enabled
             os.environ['REQUESTS_CA_BUNDLE'] = ""
@@ -43,6 +44,14 @@ class dbclient:
 
     def is_skip_failed(self):
         return self._skip_failed
+
+    def get_file_format(self):
+        return self._file_format
+
+    def is_source_file_format(self):
+        if self._file_format == 'SOURCE':
+            return True
+        return False
 
     def test_connection(self):
         # verify the proper url settings to configure this client
