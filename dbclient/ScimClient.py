@@ -25,6 +25,24 @@ class ScimClient(dbclient):
         else:
             print("Users returned an empty object")
 
+    def log_single_user(self, user_email, log_file='single_user.log'):
+        single_user_log = self.get_export_dir() + log_file
+        users = self.get_active_users()
+        found_user = False
+        for user in users:
+            current_email = user['emails'][0]['value']
+            if user_email == current_email:
+                found_user = True
+                print(user)
+                with open(single_user_log, 'w') as fp:
+                    fp.write(json.dumps(user) + '\n')
+        if not found_user:
+            print("User not found. Emails are case sensitive. Please verify email address")
+
+    def import_single_user(self, user_email, log_file='single_user.log'):
+        single_user_log = self.get_export_dir() + log_file
+        resp = self.import_users(single_user_log)
+
     def get_users_from_log(self, users_log='users.log'):
         """
         fetch a list of user names from the users log file
@@ -115,13 +133,6 @@ class ScimClient(dbclient):
                 user_names_list.append(user_resp.get('userName'))
                 u_fp.write(json.dumps(user_resp) + '\n')
         return user_names_list
-
-    def log_all_secrets(self, log_file='secrets.log'):
-        secrets_log = self.get_export_dir() + log_file
-        secrets = self.get('/secrets/scopes/list')['scopes']
-        with open(secrets_log, "w") as fp:
-            for x in secrets:
-                fp.write(json.dumps(x) + '\n')
 
     def get_user_id_mapping(self):
         # return a dict of the userName to id mapping of the new env
