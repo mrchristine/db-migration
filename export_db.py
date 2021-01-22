@@ -147,6 +147,19 @@ def main():
         end = timer()
         print("Complete Metastore Export Time: " + str(timedelta(seconds=end - start)))
 
+    if args.secrets:
+        if not args.cluster_name:
+            print("Please provide an existing cluster name w/ --cluster-name option\n")
+            return
+        print("Export the secret scopes configs at {0}".format(now))
+        start = timer()
+        sc = SecretsClient(client_config)
+        # log job configs
+        sc.log_all_secrets(args.cluster_name)
+        sc.log_all_secrets_acls()
+        end = timer()
+        print("Complete Secrets Export Time: " + str(timedelta(seconds=end - start)))
+
     if args.mounts:
         print("Export the mount configs at {0}".format(now))
         start = timer()
