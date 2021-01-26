@@ -168,12 +168,10 @@ def main():
         print("Complete User Export Time: " + str(timedelta(seconds=end - start)))
 
     if args.libs:
-        lib_c = LibraryClient(client_config)
         start = timer()
         print("Not supported today")
         end = timer()
         # print("Complete Library Import Time: " + str(timedelta(seconds=end - start)))
-
 
 
 if __name__ == '__main__':
