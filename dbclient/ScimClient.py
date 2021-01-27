@@ -343,6 +343,15 @@ class ScimClient(dbclient):
             return True
         return False
 
+    @staticmethod
+    def is_group(member_json):
+        # currently a workaround to get whether the member is a user or group
+        # check the ref instead of the type field
+        # once fixed, the type should be `user` or `group` in lowercase
+        if 'Groups/' in member_json['$ref']:
+            return True
+        return False
+
     def import_groups(self, group_dir):
         # list all the groups and create groups first
         if not os.path.exists(group_dir):
@@ -375,8 +384,10 @@ class ScimClient(dbclient):
                         if self.is_user(m):
                             old_email = old_user_emails[m['value']]
                             member_id_list.append(current_user_ids[old_email])
-                        else:
+                        elif self.is_group(m):
                             member_id_list.append(current_group_ids[m['display']])
+                        else:
+                            print("Skipping service principal members and other identities not within users/groups")
                     add_members_json = self.get_member_args(member_id_list)
                     group_id = current_group_ids[group_name]
                     add_resp = self.patch('/preview/scim/v2/Groups/{0}'.format(group_id), add_members_json)
