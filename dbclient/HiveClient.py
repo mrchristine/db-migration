@@ -67,19 +67,16 @@ class HiveClient(ClustersClient):
         :param ec_id: execution id, aka spark session id
         :return: api response object
         """
-        helper_func_cmd = """
-        import json 
-
-        def get_db_json(db_name):
-            rows = spark.sql(f"DESC DATABASE EXTENDED {db_name}").toJSON().collect()
-            output = {}
-            for x in rows:
-                j = json.loads(x)
-                output[j['database_description_item']] = j['database_description_value']
-            return output
-        """
-        resp = self.submit_command(cid, ec_id, helper_func_cmd)
-        return resp
+        # replacement strings
+        helper_func_cmd1 = """def get_db_json(db_name): import json; rows = spark.sql(f"DESC DATABASE EXTENDED \
+            {db_name}").toJSON().collect(); return list(map(lambda x: json.loads(x), rows))"""
+        helper_func_cmd2 = """def format_db_json(db_list): return dict(list(map(lambda x: \
+            (x.get('database_description_item'), x.get('database_description_value')), db_list)))"""
+        helper_func_cmd3 = "def get_db_details(db_name): return format_db_json(get_db_json(db_name))"
+        resp1 = self.submit_command(cid, ec_id, helper_func_cmd1)
+        resp2 = self.submit_command(cid, ec_id, helper_func_cmd2)
+        resp3 = self.submit_command(cid, ec_id, helper_func_cmd3)
+        return resp3
 
     def get_desc_database_details(self, db_name, cid, ec_id):
         """
@@ -89,7 +86,7 @@ class HiveClient(ClustersClient):
         :param ec_id: execution id aka spark context id
         :return: database json object
         """
-        desc_database_cmd = f'print(get_db_json(\"{db_name}\"))'
+        desc_database_cmd = f'print(get_db_details(\"{db_name}\"))'
         results = self.submit_command(cid, ec_id, desc_database_cmd)
         if results['resultType'] != 'text':
             print(json.dumps(results) + '\n')

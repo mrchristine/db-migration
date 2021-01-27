@@ -1,7 +1,7 @@
 {
   "num_workers": 1,
   "cluster_name": "API_Metastore_Work_Leave_Me_Alone",
-  "spark_version": "6.5.x-scala2.11",
+  "spark_version": "7.3.x-scala2.12",
   "aws_attributes": {
       "first_on_demand": 1,
       "availability": "SPOT_WITH_FALLBACK",
@@ -14,5 +14,5 @@
   "spark_env_vars": {
       "PYSPARK_PYTHON": "/databricks/python3/bin/python3"
   },
-  "autotermination_minutes": 15
+  "autotermination_minutes": 20
 }
