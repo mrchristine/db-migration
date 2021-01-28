@@ -235,8 +235,24 @@ class HiveClient(ClustersClient):
             else:
                 export_ddl_cmd = 'print(ddl_str)'
                 ddl_resp = self.submit_command(cid, ec_id, export_ddl_cmd)
+                ddl_resp_string = str(ddl_resp.get('data'))
+                if ddl_resp_string.find("USING DELTA") != -1 and  ddl_resp_string.find("OPTIONS (") == -1 : 
+                    set_ddl_str_cmd2 = f'ddl_str2 = spark.sql("DESCRIBE EXTENDED {db_name}.{table_name}")'
+                    ddl_str_resp2 = self.submit_command(cid, ec_id, set_ddl_str_cmd2)
+                    set_ddl_str_cmd3 = f'path = ddl_str2.filter( ddl_str2.col_name == "Location").collect()[0][1]'
+                    ddl_str_resp3 = self.submit_command(cid, ec_id, set_ddl_str_cmd3)
+                    delta_path_cmd = 'print(path)'
+                    ddl_resp2 = self.submit_command(cid, ec_id, delta_path_cmd)
+                    print("\nPath is: ", str(ddl_resp2.get('data')),"\n")
+                    path = str(ddl_resp2.get('data'))
+                    print ("This is delta table without Location")
+                    ddl_string = ddl_resp_string + str ("\nOPTIONS ( \n  path \'") + path + str("\'\n)")
+                else: 
+                    #This is either non Delta table or has Location
+                    ddl_string = ddl_resp.get('data')
                 with open(table_ddl_path, "w") as fp:
-                    fp.write(ddl_resp.get('data'))
+                    print(ddl_string)
+                    fp.write(ddl_string)
                 return 0
             return -1
 
