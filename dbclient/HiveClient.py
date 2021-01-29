@@ -94,7 +94,7 @@ class HiveClient(ClustersClient):
         db_json = ast.literal_eval(results['data'])
         return db_json
 
-    def export_database(self, db_name, cluster_name=None, iam_role=None, metastore_dir='metastore/', has_unicode=False):
+    def export_database(self, db_name, cluster_name=None, iam_role=None, metastore_dir='metastore/', db_log='database_details.log', has_unicode=False):
         # check if instance profile exists, ask users to use --users first or enter yes to proceed.
         start = timer()
         if cluster_name:
@@ -107,9 +107,12 @@ class HiveClient(ClustersClient):
         ec_id = self.get_execution_context(cid)
         # if metastore failed log path exists, cleanup before re-running
         failed_metastore_log_path = self.get_export_dir() + 'failed_metastore.log'
+        database_logfile = self.get_export_dir() + db_log
         if os.path.exists(failed_metastore_log_path):
             os.remove(failed_metastore_log_path)
         os.makedirs(self.get_export_dir() + metastore_dir + db_name, exist_ok=True)
+        db_json = self.get_desc_database_details(db_name, cid, ec_id)
+        fp.write(json.dumps(db_json) + '\n')
         self.log_all_tables(db_name, cid, ec_id, metastore_dir, failed_metastore_log_path, has_unicode)
 
     def export_hive_metastore(self, cluster_name=None, metastore_dir='metastore/', db_log='database_details.log',
