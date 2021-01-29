@@ -110,10 +110,14 @@ class HiveClient(ClustersClient):
         database_logfile = self.get_export_dir() + db_log
         if os.path.exists(failed_metastore_log_path):
             os.remove(failed_metastore_log_path)
-        os.makedirs(self.get_export_dir() + metastore_dir + db_name, exist_ok=True)
-        db_json = self.get_desc_database_details(db_name, cid, ec_id)
-        fp.write(json.dumps(db_json) + '\n')
-        self.log_all_tables(db_name, cid, ec_id, metastore_dir, failed_metastore_log_path, has_unicode)
+        resp = self.set_desc_database_helper(cid, ec_id)
+        if self.is_verbose():
+            print("Database to be Migrated\n", resp)    
+        with open(database_logfile, 'w') as fp:
+            os.makedirs(self.get_export_dir() + metastore_dir + db_name, exist_ok=True)
+            db_json = self.get_desc_database_details(db_name, cid, ec_id)
+            fp.write(json.dumps(db_json) + '\n')
+            self.log_all_tables(db_name, cid, ec_id, metastore_dir, failed_metastore_log_path, has_unicode)
 
     def export_hive_metastore(self, cluster_name=None, metastore_dir='metastore/', db_log='database_details.log',
                               has_unicode=False):
@@ -134,14 +138,13 @@ class HiveClient(ClustersClient):
         all_dbs = self.get_all_databases(cid, ec_id)
         resp = self.set_desc_database_helper(cid, ec_id)
         if self.is_verbose():
-            print(resp)
+            print("Databases to be Migrated\n", resp)    
         with open(database_logfile, 'w') as fp:
             for db_name in all_dbs:
                 os.makedirs(self.get_export_dir() + metastore_dir + db_name, exist_ok=True)
                 db_json = self.get_desc_database_details(db_name, cid, ec_id)
                 fp.write(json.dumps(db_json) + '\n')
                 self.log_all_tables(db_name, cid, ec_id, metastore_dir, failed_metastore_log_path, has_unicode)
-
         total_failed_entries = self.get_num_of_lines(failed_metastore_log_path)
         if (not self.is_skip_failed()) and self.is_aws():
             print("Retrying failed metastore export with registered IAM roles")
