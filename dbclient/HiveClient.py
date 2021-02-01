@@ -301,7 +301,7 @@ class HiveClient(ClustersClient):
                 ddl_resp = self.submit_command(cid, ec_id, export_ddl_cmd)
                 ddl_resp_string = str(ddl_resp.get('data'))
                 ddl_delta_check_string = ddl_resp_string.lower()
-                if ddl_delta_check_string.find("using delta") != -1 and  ddl_delta_check_string.find("options (") == -1 : 
+                if (("using delta" in ddl_delta_check_string) or ("using parquet" in ddl_delta_check_string)) and  (("options " not in ddl_delta_check_string) or ("location " not in ddl_delta_check_string)):
                     set_ddl_str_cmd2 = f'ddl_str2 = spark.sql("DESCRIBE EXTENDED {db_name}.{table_name}")'
                     ddl_str_resp2 = self.submit_command(cid, ec_id, set_ddl_str_cmd2)
                     set_ddl_str_cmd3 = f'path = ddl_str2.filter(ddl_str2.col_name == "Location").collect()[0][1]'
@@ -310,8 +310,8 @@ class HiveClient(ClustersClient):
                     ddl_resp2 = self.submit_command(cid, ec_id, delta_path_cmd)
                     print("\nPath is: ", str(ddl_resp2.get('data')),"\n")
                     path = str(ddl_resp2.get('data'))
-                    print ("This is delta table without Location")
-                    ddl_string = ddl_resp_string + str ("\nOPTIONS ( \n  path \'") + path + str("\'\n)")
+                    print ("This is delta or parquet table without Location")
+                    ddl_string = ddl_resp_string + str ("\nLOCATION ") + path )
                 else: 
                     #This is either non Delta table or has Location
                     ddl_string = ddl_resp.get('data')
