@@ -304,7 +304,7 @@ class HiveClient(ClustersClient):
                 if ddl_delta_check_string.find("using delta") != -1 and  ddl_delta_check_string.find("options (") == -1 : 
                     set_ddl_str_cmd2 = f'ddl_str2 = spark.sql("DESCRIBE EXTENDED {db_name}.{table_name}")'
                     ddl_str_resp2 = self.submit_command(cid, ec_id, set_ddl_str_cmd2)
-                    set_ddl_str_cmd3 = f'path = ddl_str2.filter( ddl_str2.col_name == "Location").collect()[0][1]'
+                    set_ddl_str_cmd3 = f'path = ddl_str2.filter(ddl_str2.col_name == "Location").collect()[0][1]')
                     ddl_str_resp3 = self.submit_command(cid, ec_id, set_ddl_str_cmd3)
                     delta_path_cmd = 'print(path)'
                     ddl_resp2 = self.submit_command(cid, ec_id, delta_path_cmd)
