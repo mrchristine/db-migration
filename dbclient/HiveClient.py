@@ -313,8 +313,15 @@ class HiveClient(ClustersClient):
                     print ("This is delta or parquet table without Location")
                     ddl_string = ddl_resp_string + str ("\nLOCATION ") + path )
                 else: 
-                    #This is either non Delta table or has Location
-                    ddl_string = ddl_resp.get('data')
+                    if ("location " in ddl_delta_check_string) or ("path " in ddl_delta_check_string):
+                        print ("This is other type of table with Location")
+                        ddl_string = ddl_resp.get('data')
+                    else: 
+                        print ("\nThis is other type of table without Location\n")
+                        ddl_string = ddl_resp.get('data')
+                        print(ddl_string)
+                        #This is either non Delta table or has Location
+                        
                 with open(table_ddl_path, "w") as fp:
                     print(ddl_string)
                     fp.write(ddl_string)
