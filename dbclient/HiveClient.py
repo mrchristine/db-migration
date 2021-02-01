@@ -2,6 +2,7 @@ import ast
 import os
 import time
 import base64
+import re
 from datetime import timedelta
 from timeit import default_timer as timer
 from dbclient import *
@@ -301,7 +302,7 @@ class HiveClient(ClustersClient):
                 ddl_resp = self.submit_command(cid, ec_id, export_ddl_cmd)
                 ddl_resp_string = str(ddl_resp.get('data'))
                 ddl_delta_check_string = ddl_resp_string.lower()
-                if (("using delta" in ddl_delta_check_string) or ("using parquet" in ddl_delta_check_string)) and  (("options " not in ddl_delta_check_string) or ("location " not in ddl_delta_check_string)):
+                if (search("using delta", ddl_delta_check_string) or search("using parquet", ddl_delta_check_string) or search("org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe", ddl_delta_check_string)) and  (search("location ", ddl_delta_check_string) or search("path ", ddl_delta_check_string)):
                     set_ddl_str_cmd2 = f'ddl_str2 = spark.sql("DESCRIBE EXTENDED {db_name}.{table_name}")'
                     ddl_str_resp2 = self.submit_command(cid, ec_id, set_ddl_str_cmd2)
                     set_ddl_str_cmd3 = f'path = ddl_str2.filter(ddl_str2.col_name == "Location").collect()[0][1]'
@@ -310,10 +311,10 @@ class HiveClient(ClustersClient):
                     ddl_resp2 = self.submit_command(cid, ec_id, delta_path_cmd)
                     print("\nPath is: ", str(ddl_resp2.get('data')),"\n")
                     path = str(ddl_resp2.get('data'))
-                    print ("This is delta or parquet table without Location")
+                    print ("This is delta or parquet or hive table without Location")
                     ddl_string = (ddl_resp_string + str ("\nLOCATION ") + path )
                 else: 
-                    if ("location " in ddl_delta_check_string) or ("path " in ddl_delta_check_string):
+                    if (search("location ", ddl_delta_check_string)) or (search("path ", ddl_delta_check_string)):
                         print ("This is other type of table with Location")
                         ddl_string = ddl_resp.get('data')
                     else: 
