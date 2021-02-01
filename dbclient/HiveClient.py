@@ -311,7 +311,7 @@ class HiveClient(ClustersClient):
                     print("\nPath is: ", str(ddl_resp2.get('data')),"\n")
                     path = str(ddl_resp2.get('data'))
                     print ("This is delta or parquet table without Location")
-                    ddl_string = ddl_resp_string + str ("\nLOCATION ") + path )
+                    ddl_string = (ddl_resp_string + str ("\nLOCATION ") + path )
                 else: 
                     if ("location " in ddl_delta_check_string) or ("path " in ddl_delta_check_string):
                         print ("This is other type of table with Location")
