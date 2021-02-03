@@ -305,14 +305,85 @@ class HiveClient(ClustersClient):
                 read_args = {'path': '/tmp/migration/tmp_export_ddl.txt'}
                 read_resp = self.get('/dbfs/read', read_args)
                 with open(table_ddl_path, "w") as fp:
-                    fp.write(base64.b64decode(read_resp.get('data')).decode('utf-8'))
+                    fp.write(self.table_ddl_check(cid, ec_id, db_name, table_name, base64.b64decode(read_resp.get('data')).decode('utf-8')))
                 return 0
             else:
                 export_ddl_cmd = 'print(ddl_str)'
                 ddl_resp = self.submit_command(cid, ec_id, export_ddl_cmd)
                 with open(table_ddl_path, "w") as fp:
-                    fp.write(ddl_resp.get('data'))
+                    fp.write(self.table_ddl_check(cid, ec_id, db_name, table_name, ddl_resp.get('data')))
                 return 0
+
+
+    def table_ddl_check(self, cid, ec_id, db_name, table_name, ddl_str_chk):
+        """
+        #Parse the exported table DDL before commit and fix the ddl.
+        delta tables, parquet table, Hive tables missing location param in export ddl statement fails in import.
+        # Add fix to update location of such ddls
+        :ddl_str_chk - ddl string to be parsed for fix
+        :return: ddl_str_chk as if ddl needs no fix, if fix needed apply fix for anomalies
+        """
+        ddl_check_string = ddl_str_chk.lower()
+        #print (ddl_check_string)
+
+        #Check#if ("location " not in ddl_check_string or "path " not in ddl_check_string):
+        #if (ddl_check_string.find("location ") == -1) and (ddl_check_string.find("path ") == -1 ):
+        if ('path ' not in ddl_check_string) and ('location ' not in ddl_check_string):
+            #delta table format check and fix
+            if ("using delta" in ddl_check_string):
+                print ("This is delta table# applying fix")
+                ddl_fixed_string = self.table_ddl_fix_path(cid, ec_id, db_name, table_name, ddl_str_chk)
+                return (ddl_fixed_string)
+            #parquet table format check and fix
+            elif ("using parquet" in ddl_check_string):
+                print ("This is parquet table# applying fix")
+                ddl_fixed_string = self.table_ddl_fix_path(cid, ec_id, db_name, table_name, ddl_str_chk)
+                return (ddl_fixed_string)
+            #csv table format check and fix
+            elif ("using csv" in ddl_check_string):
+                print ("This is csv table# applying fix")        
+                ddl_fixed_string = self.table_ddl_fix_path(cid, ec_id, db_name, table_name, ddl_str_chk)
+                return (ddl_fixed_string)    
+            #Hive table format check and fix
+            elif ("org.apache.hadoop.hive.serde2.lazy.lazysimpleserde" in ddl_check_string):
+                print ("This is hive table# applying fix")
+                ddl_fixed_string = self.table_ddl_fix_path(cid, ec_id, db_name, table_name, ddl_str_chk)
+                return (ddl_fixed_string) 
+            #orc table format check and fix
+            elif ("using orc" in ddl_check_string):
+                print ("This is orc table# applying fix")
+                ddl_fixed_string = self.table_ddl_fix_path(cid, ec_id, db_name, table_name, ddl_str_chk)
+                return (ddl_fixed_string)       
+            #default action when no fix is available    
+            else:
+                print ("This is table with wrong ddl syntax# the table will be imported at destination but may be empty##############ddl syntax as below")
+                print (ddl_check_string)
+                return(ddl_str_chk)
+        #If table ddl is good do nothing. if the table ddl has path or location defenition it is deemed good
+        else:
+            print("The table ddl is in good state. No fix needed")
+            return(ddl_str_chk)
+    
+
+    def table_ddl_fix_path(self, cid, ec_id, db_name, table_name, ddl_str_fix_path):
+        #Extract path for ddl statements that need fix and appen
+        #describe table extended to get location parameter
+        fix_ddl_str_cmd1 = f'ddl_str_fix = spark.sql("DESCRIBE EXTENDED {db_name}.{table_name}")'
+        self.submit_command(cid, ec_id, fix_ddl_str_cmd1)
+        #Strip the location param from describe statemet and return path as string
+        fix_ddl_str_cmd2 = f'path = ddl_str_fix.filter(ddl_str_fix.col_name == "Location").collect()[0][1]'
+        self.submit_command(cid, ec_id, fix_ddl_str_cmd2)
+        extract_ddl_path_cmd = 'print(path)'
+        ddl_resp_path = self.submit_command(cid, ec_id, extract_ddl_path_cmd)
+        path = str(ddl_resp_path.get('data'))
+
+        #append path at end of location
+        print("\nPath is: ", path,"\n")
+        ddl_fixed_string = (ddl_str_fix_path + str ("\nLOCATION \'") + path + "\'" )
+        # return the fixed string
+        return(ddl_fixed_string)
+
+
 
     def retry_failed_metastore_export(self, cid, failed_metastore_log_path, metastore_dir='metastore/'):
         # check if instance profile exists, ask users to use --users first or enter yes to proceed.
