@@ -17,4 +17,4 @@ print(f"Total number of tables repaired {num_of_tables}")
 
 # COMMAND ----------
 
-
+dbutils.fs.rm('/tmp/migration/repair_ddl.log')

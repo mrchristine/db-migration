@@ -194,7 +194,7 @@ python export_db.py --profile DEMO --metastore --cluster-name "Test" --database 
 ```
 
 To find legacy Hive tables that need to be repaired after a successful import, run the following:
-```buildoutcfg
+```
 python import_db.py --profile DST --get-repair-log
 ```
 Once completed, it will upload a log to the destination location. 
