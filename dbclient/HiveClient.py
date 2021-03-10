@@ -393,11 +393,7 @@ class HiveClient(ClustersClient):
     def get_all_databases(self, cid, ec_id):
         # submit first command to find number of databases
         # DBR 7.0 changes databaseName to namespace for the return value of show databases
-        if self.is_spark_3(cid):
-            all_dbs_cmd = 'all_dbs = [x.namespace for x in spark.sql("show databases").collect()]; print(len(all_dbs))'
-        else:
-            all_dbs_cmd = 'all_dbs = [x.databaseName for x in spark.sql("show databases").collect()]; print(len(' \
-                          'all_dbs)) '
+        all_dbs_cmd = 'all_dbs = [x.databaseName for x in spark.sql("show databases").collect()]; print(len(all_dbs))'
         results = self.submit_command(cid, ec_id, all_dbs_cmd)
         if results['resultType'] != 'text':
             print(json.dumps(results) + '\n')
