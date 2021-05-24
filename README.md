@@ -1,4 +1,6 @@
-# Databricks Migration Tool
+# [Deprecated] Databricks Migration Tool 
+
+## This project is deprecated and official support is moving to the Databricks Labs project: [migrate](https://github.com/databrickslabs/migrate)
 
 This is a migration package to log all Databricks resources for backup and/or migrating to another Databricks workspace.
 Migration allows a Databricks organization to move resources between Databricks Workspaces, 

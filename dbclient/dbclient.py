@@ -146,6 +146,14 @@ class dbclient:
         return self.http_req('patch', endpoint, json_params, version, print_json)
 
     @staticmethod
+    def get_num_lines(filename):
+        i = 0
+        with open(filename) as f:
+            for i, l in enumerate(f):
+                pass
+        return i + 1
+
+    @staticmethod
     def get_key(http_resp, key_name):
         value = http_resp.get(key_name, None)
         if value is None:
